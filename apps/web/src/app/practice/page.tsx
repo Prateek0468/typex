@@ -59,7 +59,7 @@ function Practice() {
           </div>
 
 
-          <div className="mb-6 p-8 bg-gradient-to-br rounded-xl text-2xl font-mono leading-relaxed border-2 border-gray-200 dark:border-gray-700 shadow-inner">
+          <div className="mb-6 p-8 bg-gradient-to-br rounded-xl text-2xl font-mono h-70 overflow-scroll leading-relaxed border-2 border-gray-200 dark:border-gray-700 shadow-inner">
             {currentText.split('').map((char, index) => (
               <span
                 key={index}

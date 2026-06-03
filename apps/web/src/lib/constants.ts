@@ -13,6 +13,23 @@ export type NavigationCardsType = {
   description: string;
 }
 
+export type RacerType = {
+  id: number;
+  name: string;
+  progress: number;
+  wpm: number;
+  color: string;
+}
+
+export const RACER_COLORS = [
+  'bg-blue-500',
+  'bg-red-500',
+  'bg-green-500',
+  'bg-yellow-500',
+  'bg-purple-500',
+];
+
+
 export const themes: Theme[] = [
   { name: "dark", color: "dark" },
   { name: "light", color: "light" },
