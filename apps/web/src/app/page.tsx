@@ -6,11 +6,10 @@ import { Sparkles } from 'lucide-react';
 import { CardOptions } from "@/lib/constants";
 
 export default function Home() {
-  // const typingText = getRandomText();
 
   return (
-    <div className="min-h-screen flex flex-col font-michroma">
-      <main className="flex flex-1 flex-col items-center gap-4">
+    <div className="flex flex-col font-michroma">
+      <div className="flex flex-col items-center gap-4">
         <div className="flex flex-col justify-center items-center mt-80">
           <div className="flex mb-4 gap-2">
             <Sparkles className="size-12 text-yellow-500 dark:text-yellow-400" />
@@ -31,7 +30,7 @@ export default function Home() {
             <NavigationCards key={href} icon={icon} title={title} description={description} href={href} />
           ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

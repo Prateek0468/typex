@@ -5,6 +5,7 @@ import { Moon, Sun, Trophy, Zap } from 'lucide-react'
 import React from 'react'
 import { Button } from './ui/button'
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 
 function Header() {
 
@@ -23,9 +24,9 @@ function Header() {
   return (
     <header className="text-xl flex justify-between items-center p-10 font-michroma">
       {/* App */}
-      <h1 className="flex gap-2 font-bold">
+      <Link className="flex gap-2 font-bold" href='/'>
         <Zap className="size-8" fill='dark' /> TypeX
-      </h1>
+      </Link>
 
 
       {/* Login and theme swticher */}
