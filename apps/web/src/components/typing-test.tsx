@@ -47,11 +47,11 @@ function TypingTest({ text }: { text: string }) {
 
       // Update WPM every second
       wpmIntervalRef.current = setInterval(() => {
-        setLiveWpm(calculateWPM(startTime || 0, endTime || 0, userInput))
+        setLiveWpm(calculateWPM(startTime, endTime, userInput))
       }, 1000)
 
       // Calculate initial WPM
-      setLiveWpm(calculateWPM(startTime || 0, endTime || 0, userInput))
+      setLiveWpm(calculateWPM(startTime, endTime, userInput))
     }
 
     return () => {
@@ -125,7 +125,7 @@ function TypingTest({ text }: { text: string }) {
         setIsCompleted(true)
 
         // Set final WPM
-        setWpm(calculateWPM(startTime || 0, endTime || 0, userInput))
+        setWpm(calculateWPM())
 
         // Clear interval
         if (wpmIntervalRef.current) {

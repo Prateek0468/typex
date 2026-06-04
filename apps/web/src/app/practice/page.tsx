@@ -1,17 +1,83 @@
 'use client';
 
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getRandomText } from '@/lib/utils';
 import { RotateCcw, Target, Zap } from 'lucide-react'
-import { useEffect, useState } from 'react';
 
 function Practice() {
   const [currentText, setCurrentText] = useState("");
+  const [wpm, setWpm] = useState(0);
+  const [userInput, setUserInput] = useState("");
+  const [accuracy, setAccuracy] = useState(100);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setCurrentText(getRandomText().text)
   }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    if(!startTime) setStartTime(Date.now());
+
+    setUserInput(value);
+
+
+    // calculate accuracy
+    let correct = 0;
+    for(let i = 0; i < value.length; i++)
+    {
+      if(value[i] == currentText[i]) correct++;
+    }
+
+    const acc = value.length > 0 ? (correct / value.length) * 100 : 100;
+    setAccuracy(Math.round(acc));
+
+
+    // calculate WPM
+    if (startTime) {
+      const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
+      const wordsTyped = value.split(' ').length;
+      const currentWpm = Math.round(wordsTyped / timeElapsed);
+      setWpm(currentWpm);
+    }
+
+    // // Check if complete
+    // if (value === currentText) {
+    //   setIsComplete(true);
+    //   const wordsTyped = value.split(' ').length;
+    //   // updateStats(currentWpm, acc, wordsTyped, 'practice');
+    //   confetti({
+    //     particleCount: 100,
+    //     spread: 70,
+    //     origin: { y: 0.6 }
+    //   });
+    // }
+  }
+
+
+  const generateNewText = () => {
+    setCurrentText(getRandomText().text)
+    setUserInput('');
+    setStartTime(null);
+    setWpm(0);
+    setAccuracy(100);
+    setIsComplete(false);
+    inputRef.current?.focus();
+  }
+
+  const getCharacterClass = (index: number) => {
+    if (index >= userInput.length) {
+      return 'text-gray-400';
+    }
+    return userInput[index] === currentText[index]
+      ? 'text-green-600'
+      : 'text-red-600';
+  }
 
   return (
     <div className='font-michroma flex flex-col justify-center items-center'>
@@ -19,7 +85,7 @@ function Practice() {
         {/* header */}
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Practice Mode</h1>
-          <Button variant="ghost" className='border-2 cursor-pointer' onClick={() => setCurrentText(getRandomText().text)}>
+          <Button variant="ghost" className='border-2 cursor-pointer' onClick={generateNewText}>
             <RotateCcw />
             New Text
           </Button>
@@ -37,7 +103,7 @@ function Practice() {
                 <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">WPM</div>
               </div>
-              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">{29}</div>
+              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">{wpm}</div>
             </div>
             <div
               className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border-2 border-green-200 dark:border-green-700"
@@ -46,14 +112,14 @@ function Practice() {
                 <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Accuracy</div>
               </div>
-              <div className="text-4xl font-bold text-green-600 dark:text-green-400">{0}%</div>
+              <div className="text-4xl font-bold text-green-600 dark:text-green-400">{accuracy}%</div>
             </div>
             <div
               className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl border-2 border-purple-200 dark:border-purple-700"
             >
               <div className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">Progress</div>
               <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-                {72}/{100}
+                {userInput.length}/{currentText.length}
               </div>
             </div>
           </div>
@@ -63,7 +129,7 @@ function Practice() {
             {currentText.split('').map((char, index) => (
               <span
                 key={index}
-                className={"transition-all duration-300 "}
+                className={`${getCharacterClass(index)} transition-all duration-300`}
               >
                 {char}
               </span>
@@ -71,11 +137,11 @@ function Practice() {
           </div>
 
           <input
-            // ref={inputRef}
+            ref={inputRef}
             type="text"
-            // value={userInput}
-            // onChange={handleInputChange}
-            // disabled={isComplete}
+            value={userInput}
+            onChange={e => handleInputChange(e)}
+            disabled={isComplete}
             className="w-full p-5 text-xl border-2 rounded-xl focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono transition-all"
             placeholder="Start typing here..."
             autoFocus

@@ -67,7 +67,7 @@ function Race() {
               <div className="w-24 text-right font-bold text-blue-700 dark:text-blue-400 text-lg">{100} WPM</div>
             </div>
 
-            {racers.map((racer, index) => (
+            {racers.map((racer) => (
               <div
                 key={racer.id}
                 // initial={{ opacity: 0, x: -20 }}
