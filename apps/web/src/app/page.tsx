@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="flex flex-col font-michroma">
       <div className="flex flex-col items-center gap-4">
-        <div className="flex flex-col justify-center items-center mt-80">
+        <div className="flex flex-col justify-center items-center mt-[10%]">
           <div className="flex mb-4 gap-2">
             <Sparkles className="size-12 text-yellow-500 dark:text-yellow-400" />
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
