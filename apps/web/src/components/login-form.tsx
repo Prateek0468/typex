@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,27 @@ export default function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const [isSignup, setIsSignup] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // save it here on the db
+    console.log(formData);
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // data will be saved as we type
+    setFormData(prev => ({
+      ...prev,
+      [e.target.id]: e.target.value,
+    }))
+  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -40,7 +61,7 @@ export default function LoginForm({
         </CardHeader>
 
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <FieldGroup>
 
               {isSignup && (
@@ -49,6 +70,8 @@ export default function LoginForm({
                   <Input
                     id="name"
                     type="text"
+                    value={formData.name}
+                    onChange={handleChange}
                     placeholder="John Doe"
                     required
                   />
@@ -60,6 +83,8 @@ export default function LoginForm({
                 <Input
                   id="email"
                   type="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   placeholder="m@example.com"
                   required
                 />
@@ -82,6 +107,8 @@ export default function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                 />
               </Field>
@@ -95,6 +122,8 @@ export default function LoginForm({
                   <Input
                     id="confirmPassword"
                     type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
                     required
                   />
                 </Field>
