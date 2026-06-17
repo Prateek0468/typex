@@ -32,7 +32,7 @@ func (r *Repository) CreateUser(ctx context.Context, name, email, password strin
 
 	// insert into DB
 	_, err = r.db.Exec(ctx,
-		`INSERT INTO users (name, email, pass_hash, created_at)
+		`INSERT INTO users (name, email, password_hash, created_at)
 		 VALUES ($1, $2, $3, NOW())`,
 		name, email, string(hashedPassword),
 	)

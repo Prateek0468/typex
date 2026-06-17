@@ -59,7 +59,6 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
