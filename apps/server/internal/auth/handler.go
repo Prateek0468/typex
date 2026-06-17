@@ -1,11 +1,12 @@
 package auth
 
-
 import (
 	"encoding/json"
 	"net/http"
 
 	"typex-server/internal/user"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 
@@ -22,6 +23,11 @@ func NewHandler(userRepo *user.Repository) *Handler {
 type SignupRequest struct {
 	Name string `json:"name"`
 	Email string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -60,4 +66,39 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("user created"))
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	// check if method is post and only allow that
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed) 
+		return
+	}
+
+	var req LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+
+	user, err := h.userRepo.GetByEmail(r.Context(), req.Email)
+	if err != nil {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
+	)
+	if err != nil {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("login successful")) 	// converting the string to a byte slice
+
 }
