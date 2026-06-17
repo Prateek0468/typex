@@ -49,7 +49,12 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	// TEMP: storing raw password for now (we will fix with bcrypt next)
 	err := h.userRepo.CreateUser(r.Context(), req.Name, req.Email, req.Password)
 	if err != nil {
-		http.Error(w, "failed to create user", http.StatusInternalServerError)
+		if err.Error() == "email already exists" {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
