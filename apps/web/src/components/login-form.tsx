@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+type FormDataType = {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 export default function LoginForm({
   className,
   ...props
@@ -30,11 +37,72 @@ export default function LoginForm({
     confirmPassword: "",
   });
 
+
+  const handleLogin = async (data: FormDataType) => {
+    const { email, password } = data;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      console.log(apiUrl);
+      const response = await fetch(`${apiUrl}/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message);
+      }
+
+      console.log("login successful: ", result);
+    } catch (err) {
+      console.error(err);
+    }
+
+  }
+
+  const handleSignup = async (data: FormDataType) => {
+    // console.log(`${name} with ${email} is trying to signup using password ${password} confirm this with ${confirmPassword}`);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      console.log(apiUrl);
+      const response = await fetch(`${apiUrl}/signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data)
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message);
+      }
+
+      console.log("signup successful: ", result);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // save it here on the db
-    console.log(formData);
+    if (isSignup) {
+      handleSignup(formData);
+    } else {
+      handleLogin(formData);
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

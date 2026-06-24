@@ -64,7 +64,11 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("user created"))
+	// w.Write([]byte("user created"))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+	"message": "user created",
+	})
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +102,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("login successful")) 	// converting the string to a byte slice
-
+	// w.Write([]byte("login successful")) 	// converting the string to a byte slice
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+	"message": "login successful",
+	})	
 }
