@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"typex-server/internal/auth"
 	"typex-server/internal/db"
+	"typex-server/internal/handlers"
 	"typex-server/internal/user"
 
 	"github.com/joho/godotenv"
@@ -19,7 +19,8 @@ func enableCors(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")	
-		
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -56,16 +57,17 @@ func main() {
 	defer pool.Close()
 
 	userRepo := user.NewRepository(pool)
-	authHandler := auth.NewHandler(userRepo)
+	handler := handlers.NewHandler(userRepo)
 
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([] byte("server is running"))
 	})
-	mux.HandleFunc("/signup", authHandler.Signup)
-	mux.HandleFunc("/login", authHandler.Login)
+	mux.HandleFunc("/signup", handler.Signup)
+	mux.HandleFunc("/login", handler.Login)
+	mux.HandleFunc("/user", handler.User)
 
-	handler := enableCors(mux)
+	corshandler := enableCors(mux)
 
 
 	// verify connection
@@ -76,7 +78,7 @@ func main() {
 
 	fmt.Println("Server running on :8080")
 
-	err1 := http.ListenAndServe(":8080", handler)
+	err1 := http.ListenAndServe(":8080", corshandler)
 	if err1 != nil {
 		panic(err)
 	}

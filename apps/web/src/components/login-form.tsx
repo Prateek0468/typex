@@ -25,6 +25,9 @@ type FormDataType = {
   confirmPassword: string;
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+
 export default function LoginForm({
   className,
   ...props
@@ -37,19 +40,17 @@ export default function LoginForm({
     confirmPassword: "",
   });
 
-
   const handleLogin = async (data: FormDataType) => {
     const { email, password } = data;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      console.log(apiUrl);
       const response = await fetch(`${apiUrl}/login`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({ email, password })
         }
       );
@@ -71,8 +72,6 @@ export default function LoginForm({
     // console.log(`${name} with ${email} is trying to signup using password ${password} confirm this with ${confirmPassword}`);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      console.log(apiUrl);
       const response = await fetch(`${apiUrl}/signup`,
         {
           method: "POST",

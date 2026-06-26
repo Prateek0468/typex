@@ -6,6 +6,12 @@ export interface Theme {
   color: string;
 }
 
+export type UserType = {
+  name: string;
+  email: string;
+  id: string;
+}
+
 export type NavigationCardsType = {
   icon: LucideIcon;
   title: string;

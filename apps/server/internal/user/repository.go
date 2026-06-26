@@ -59,3 +59,12 @@ func (r *Repository) GetByEmail(ctx context.Context, email string) (User, error)
 
 	return u, err
 }
+
+func (r *Repository) GetById(ctx context.Context, id string) (User, error) {
+	var u User
+	err := r.db.QueryRow(ctx, 
+		`SELECT id, name, email, password_hash FROM users WHERE id=$1`, id,
+	).Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash)
+
+	return u, err	
+}

@@ -6,17 +6,31 @@ import { Button } from './ui/button';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import LoginForm from './login-form';
+import { UserType } from '@/lib/constants';
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 function Header() {
   const { theme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [user, setUser] = useState<UserType>();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    fetch(`${apiUrl}/user`, {
+      method: "GET",
+      credentials: "include"
+    })
+      .then((response) => response.json())
+      .then(res => setUser(res));
+  }, [])
+
+  console.log(user, 'user')
   if (!mounted) return null;
 
   return (
@@ -46,12 +60,16 @@ function Header() {
             )}
           </Button>
 
-          <Button
-            onClick={() => setIsLoginOpen(true)}
-            className="cursor-pointer"
-          >
-            Login / Signup
-          </Button>
+          {user ? (
+            <div>{user.name}</div>
+          ) : (
+            <Button
+              onClick={() => setIsLoginOpen(true)}
+              className="cursor-pointer"
+            >
+              Login / Signup
+            </Button>
+          )}
         </div>
       </header>
 
@@ -64,7 +82,6 @@ function Header() {
             >
               ✕
             </button>
-
             <LoginForm />
           </div>
         </div>
