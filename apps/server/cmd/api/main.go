@@ -65,6 +65,7 @@ func main() {
 	})
 	mux.HandleFunc("/signup", handler.Signup)
 	mux.HandleFunc("/login", handler.Login)
+	mux.HandleFunc("/logout", handler.Logout)
 	mux.HandleFunc("/user", handler.User)
 
 	corshandler := enableCors(mux)

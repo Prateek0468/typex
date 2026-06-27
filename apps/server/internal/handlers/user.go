@@ -29,6 +29,7 @@ func (h *Handler) User(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string {
 			"error": "user not found",
 		})
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, map[string]string {

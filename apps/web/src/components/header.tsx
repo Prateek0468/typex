@@ -33,6 +33,19 @@ function Header() {
       });
   }, [])
 
+  const handleLogout = async () => {
+    try {
+      await fetch(`${apiUrl}/logout`, {
+        method: "POST",
+        credentials: "include",
+      })
+
+      setUser(undefined);
+    } catch (err) {
+      console.error("Logout failed: ", err);
+    }
+  }
+
   console.log(user, 'user')
   if (!mounted) return null;
 
@@ -64,7 +77,12 @@ function Header() {
           </Button>
 
           {user ? (
-            <div>{user.name}</div>
+            <div className='flex items-center gap-2'>
+              <span>{user.name}</span>
+              <Button onClick={handleLogout}>
+                Logout
+              </Button>
+            </div>
           ) : (
             <Button
               onClick={() => setIsLoginOpen(true)}

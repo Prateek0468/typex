@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"typex-server/internal/auth"
 	"typex-server/internal/user"
@@ -56,7 +57,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TEMP: storing raw password for now (we will fix with bcrypt next)
-	err := h.userRepo.CreateUser(r.Context(), req.Name, req.Email, req.Password)
+	user, err := h.userRepo.CreateUser(r.Context(), req.Name, req.Email, req.Password)
 	if err != nil {
 		if err.Error() == "email already exists" {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -66,11 +67,25 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	// w.Write([]byte("user created"))
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-	"message": "user created",
+	token, err := auth.GenerateToken(user.ID)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string {
+			"error": "failed to generate token",
+		}) 
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name: "token",
+		Value: token, 
+		HttpOnly: true,
+		Path: "/",
+		MaxAge: 60 * 60 * 24, // 1 day
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	utils.WriteJSON(w, http.StatusOK, map[string] string{
+		"message": "signup successful",
 	})
 }
 
@@ -136,3 +151,23 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			"message": "login successful",
 		})
 }
+
+
+// Logout handler
+func(h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	// just clearing the cookie here will log the user out
+	http.SetCookie(w, &http.Cookie {
+		Name: "token",
+		Value: "",
+		Path: "/",
+		MaxAge: -1, // Delete Immediately
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires: time.Unix(0, 0),
+	})
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "logged out",
+	})
+}
+

@@ -21,34 +21,37 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 
 
 // queries
-func (r *Repository) CreateUser(ctx context.Context, name, email, password string) error {
+func (r *Repository) CreateUser(ctx context.Context, name, email, password string) (*User, error) {
 
 	// hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	var user User
 
 	// insert into DB
-	_, err = r.db.Exec(ctx,
-		`INSERT INTO users (name, email, password_hash, created_at)
-		 VALUES ($1, $2, $3, NOW())`,
-		name, email, string(hashedPassword),
-	)
+	err = r.db.QueryRow(ctx, 
+	`INSERT INTO users (name, email, password_hash, created_at)
+	VALUES ($1, $2, $3, NOW())
+	RETURNING id, name, email`, name, email, string(hashedPassword), 
+).Scan(&user.ID, &user.Name, &user.Email);
+
+
 	if err != nil {
 		// check if it's a postgresql error
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { // check if there's a *pgconn.PgError somewhere inside the error
 			if pgErr.Code == "23505" { // this is a postgresql error code meaning unique_violation
-				return errors.New("email already exists")
+				return nil, errors.New("email already exists")
 			}
 		}
 
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &user, nil
 }
 
 func (r *Repository) GetByEmail(ctx context.Context, email string) (User, error) {
