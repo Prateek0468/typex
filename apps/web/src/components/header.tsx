@@ -27,7 +27,10 @@ function Header() {
       credentials: "include"
     })
       .then((response) => response.json())
-      .then(res => setUser(res));
+      .then(res => {
+        if (res.error) setUser(undefined);
+        else setUser(res);
+      });
   }, [])
 
   console.log(user, 'user')
