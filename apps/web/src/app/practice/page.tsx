@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { getRandomText } from '@/lib/utils';
+import { getRandomText, getRandomTextAPI } from '@/lib/utils';
 import { RotateCcw, Target, Zap } from 'lucide-react'
 
 function Practice() {
@@ -17,35 +17,39 @@ function Practice() {
   const [isComplete, setIsComplete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-
   // split the current text into words and render those
   const words = useMemo(() => currentText.split(/\s+/).filter(Boolean), [currentText]);
   useEffect(() => {
-    setCurrentText(getRandomText().text)
+    async function loadText() {
+      const data = await getRandomTextAPI();
+      setCurrentText(data.text);
+    }
+
+    loadText();
   }, [])
 
   const updateStats = (nextTypedWords: string[]) => {
     const correctWords = nextTypedWords.filter(
       (word, idx) => word === words[idx]
     ).length;
-  
+
     const totalWords = nextTypedWords.length;
-  
+
     const nextAccuracy =
       totalWords === 0
         ? 100
         : Math.round((correctWords / totalWords) * 100);
-  
+
     setAccuracy(nextAccuracy);
-  
+
     if (startTime) {
       const minutes =
         (Date.now() - startTime) / 1000 / 60;
-  
+
       const nextWpm = Math.round(
         correctWords / Math.max(minutes, 0.01)
       );
-  
+
       setWpm(nextWpm);
     }
   };
@@ -131,9 +135,14 @@ function Practice() {
     }
   };
 
+  const generateNewText = async () => {
+    const data = await getRandomTextAPI();
+    setCurrentText(data.text);
+  }
 
-  const generateNewText = () => {
-    setCurrentText(getRandomText().text);
+
+  const onClickNewText = () => {
+    generateNewText();
     setTypedWords([]);
     setUserInput('');
     setStartTime(null);
@@ -143,6 +152,7 @@ function Practice() {
     setIsComplete(false);
     inputRef.current?.focus();
   }
+
 
   const renderCurrentWord = (word: string) => {
     return word.split('').map((char, i) => {
@@ -169,7 +179,7 @@ function Practice() {
         {/* header */}
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Practice Mode</h1>
-          <Button variant="ghost" className='border-2 cursor-pointer' onClick={generateNewText}>
+          <Button variant="ghost" className='border-2 cursor-pointer' onClick={onClickNewText}>
             <RotateCcw />
             New Text
           </Button>

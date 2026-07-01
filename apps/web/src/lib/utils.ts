@@ -2,6 +2,8 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { typingdata } from "../app/data";
 
+const baseURL = process.env.NEXT_PUBLIC_API_URL
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -9,6 +11,16 @@ export function cn(...inputs: ClassValue[]) {
 export const getRandomText = () => {
   return typingdata[Math.floor(Math.random() * typingdata.length)];
 };
+
+export const getRandomTextAPI = async () => {
+  const res = await fetch(`${baseURL}/api/typing`);
+
+  if(!res.ok) {
+    throw new Error("Failed to fetch text");
+  }
+
+  return res.json();
+}
 
 /**
    * Calculates Words Per Minute (WPM) based on user input and elapsed time
