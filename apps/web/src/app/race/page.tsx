@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { RACER_COLORS, RacerType } from '@/lib/constants';
-import { getRandomText } from '@/lib/utils';
+import { getRandomTextAPI } from '@/lib/utils';
 import { RotateCcw, Play } from 'lucide-react'
 import { motion } from 'framer-motion';
 
@@ -23,7 +23,11 @@ function Race() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setCurrentText(getRandomText().text)
+    async function loadText() {
+      const data = await getRandomTextAPI();
+      setCurrentText(data.text);
+    }
+    loadText();
   }, [])
 
   useEffect(() => {
@@ -103,8 +107,13 @@ function Race() {
     }
   }
 
+  const generateNewText = async () => {
+    const data = await getRandomTextAPI();
+    setCurrentText(data.text);
+  }
+
   const resetRace = () => {
-    setCurrentText(getRandomText().text);
+    generateNewText();
     setUserInput('');
     setStartTime(null);
     setWpm(0);
@@ -137,10 +146,14 @@ function Race() {
 
         {/* main content area */}
         <Card className='p-6 flex flex-col jusify-center'>
-          <Button className='flex items-center justify-center w-fit cursor-pointer'>
-            <Play className='size-6' />
-            Start Race
-          </Button>
+          <div className='flex justify-between items-center'>
+            <Button className='flex items-center justify-center w-fit cursor-pointer' onClick={startRace}>
+              <Play className='size-6' />
+              Start Race
+            </Button>
+            <span>{accuracy}% Accuracy</span>
+          </div>
+
 
           {countdown !== null && (
             <div
@@ -174,7 +187,7 @@ function Race() {
                   initial={{ width: 0 }}
                   animate={{ width: `${userProgress}%` }}
                   className="bg-gradient-to-r from-blue-600 to-blue-400 h-full flex items-center justify-end px-3 shadow-lg"
-                transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.3 }}
                 >
                   <span className="text-white text-sm font-bold">{Math.round(userProgress)}%</span>
                 </motion.div>
@@ -196,7 +209,7 @@ function Race() {
                     initial={{ width: 0 }}
                     animate={{ width: `${racer.progress}%` }}
                     className={`${racer.color} h-full flex items-center justify-end px-3 shadow-lg`}
-                  transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.3 }}
                   >
                     <span className="text-white text-sm font-bold">{Math.round(racer.progress)}%</span>
                   </motion.div>

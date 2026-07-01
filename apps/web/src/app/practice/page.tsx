@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { getRandomText, getRandomTextAPI } from '@/lib/utils';
+import { getRandomTextAPI } from '@/lib/utils';
 import { RotateCcw, Target, Zap } from 'lucide-react'
 
 function Practice() {
