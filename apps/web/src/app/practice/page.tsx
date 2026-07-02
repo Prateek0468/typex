@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getRandomTextAPI } from '@/lib/utils';
-import { RotateCcw, Target, Zap } from 'lucide-react'
+import { LoaderPinwheel, RotateCcw, Target, Zap } from 'lucide-react'
 
 function Practice() {
   const [currentText, setCurrentText] = useState("");
@@ -15,14 +15,20 @@ function Practice() {
   const [accuracy, setAccuracy] = useState(100);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // split the current text into words and render those
   const words = useMemo(() => currentText.split(/\s+/).filter(Boolean), [currentText]);
   useEffect(() => {
     async function loadText() {
-      const data = await getRandomTextAPI();
-      setCurrentText(data.text);
+      try {
+        setIsLoading(true);
+        const data = await getRandomTextAPI();
+        setCurrentText(data.text);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     loadText();
@@ -136,8 +142,13 @@ function Practice() {
   };
 
   const generateNewText = async () => {
-    const data = await getRandomTextAPI();
-    setCurrentText(data.text);
+    try {
+      setIsLoading(true);
+      const data = await getRandomTextAPI();
+      setCurrentText(data.text);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
 
@@ -220,7 +231,8 @@ function Practice() {
 
 
           <div className="mb-6 p-8 bg-gradient-to-br rounded-xl text-2xl font-mono h-70 overflow-scroll leading-relaxed border-2 border-gray-200 dark:border-gray-700 shadow-inner">
-            {words.map((word, index) => {
+            {isLoading && <div className='flex justify-center items-center h-full'><LoaderPinwheel />...Loading</div>}
+            {!isLoading && words.map((word, index) => {
               // Completed words
               if (index < typedWords.length) {
                 const correct = typedWords[index] === words[index];
