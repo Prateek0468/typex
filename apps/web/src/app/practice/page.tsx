@@ -32,7 +32,15 @@ function Practice() {
     }
 
     loadText();
-  }, [])
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById(`word-${currentWordIdx}`);
+    el?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [currentWordIdx]);
 
   const updateStats = (nextTypedWords: string[]) => {
     const correctWords = nextTypedWords.filter(
@@ -239,6 +247,7 @@ function Practice() {
 
                 return (
                   <span
+                    id={`word-${index}`}
                     key={index}
                     className={correct ? 'text-green-600' : 'text-red-600'}
                   >
@@ -250,7 +259,7 @@ function Practice() {
               // Current word
               if (index === currentWordIdx) {
                 return (
-                  <span key={index}>
+                  <span id={`word-${index}`} key={index}>
                     <span className='border-b-2 border-blue-500'>
                       {renderCurrentWord(word)}
                     </span>
@@ -261,7 +270,7 @@ function Practice() {
 
               // Future words
               return (
-                <span key={index} className="text-gray-400">
+                <span id={`word-${index}`} key={index} className="text-gray-400">
                   {word}{' '}
                 </span>
               );
@@ -280,6 +289,16 @@ function Practice() {
             placeholder="Start typing here..."
             autoFocus
           />
+          {isComplete && (
+            <div className="flex flex-col items-center justify-center mt-4 text-center">
+              <div className="text-2xl font-bold text-green-600">
+                Test Completed 🎉
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                Press &quot;New Text&quot; to try again
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>
