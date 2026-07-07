@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"typex-server/internal/auth"
 	"typex-server/internal/db"
 	"typex-server/internal/handlers"
 	"typex-server/internal/user"
@@ -66,8 +67,9 @@ func main() {
 	mux.HandleFunc("/signup", handler.Signup)
 	mux.HandleFunc("/login", handler.Login)
 	mux.HandleFunc("/logout", handler.Logout)
-	mux.HandleFunc("/user", handler.User)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
+	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
+	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
 
 	corshandler := enableCors(mux)
 

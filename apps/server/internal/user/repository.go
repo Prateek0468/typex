@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -70,4 +71,51 @@ func (r *Repository) GetById(ctx context.Context, id string) (User, error) {
 	).Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash)
 
 	return u, err	
+}
+
+// get user stats
+func (r * Repository) GetUserStats(ctx context.Context, userId string) (*UserStats, error) {
+	var stats UserStats
+
+	err := r.db.QueryRow(ctx,
+		`SELECT userd_id, avg_wpm, avg_accuracy, best_wpm, total_races FROM user_stats WHERE user_id = $1`, userId,
+	).Scan(&stats.UserID, &stats.AverageWPM, &stats.AverageAccuracy, &stats.BestWPM, &stats.TotalRaces)
+
+	if err != nil { 
+		return nil, err
+	}	
+
+	return &stats, err
+}
+
+
+// update user stats
+func (r *Repository) UpdateUserStats(ctx context.Context, userID string, wpm int, accuracy int) error {
+
+	// insert if there is not race data otherwise just update
+	result, err := r.db.Exec(ctx, 
+		`INSERT INTO user_stats (
+			user_id,
+			avg_wpm,
+			avg_accuracy,
+			best_wpm,
+			total_races
+		)
+		VALUES ($1, $2, $3, $2, 1)
+
+		ON CONFLICT (user_id)
+		DO UPDATE SET
+			avg_wpm = ((user_stats.avg_wpm * user_stats.total_races) + $2) / (user_stats.total_races + 1),
+			avg_accuracy = ((user_stats.avg_accuracy * user_stats.total_races) + $3) / (user_stats.total_races + 1),
+			best_wpm = GREATEST(user_stats.best_wpm, $2),
+			total_races = user_stats.total_races + 1
+		`, userID, wpm, accuracy,
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("rows updated:", result.RowsAffected())
+
+	return nil
 }

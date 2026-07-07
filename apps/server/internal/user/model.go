@@ -6,3 +6,11 @@ type User struct {
 	Email     string
 	PasswordHash  string
 }
+
+type UserStats struct {
+	UserID string
+	TotalRaces int
+	AverageWPM int
+	AverageAccuracy int
+	BestWPM int
+}
