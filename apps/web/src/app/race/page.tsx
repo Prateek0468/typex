@@ -1,37 +1,54 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { RACER_COLORS, RacerType } from '@/lib/constants';
 import { getRandomTextAPI } from '@/lib/utils';
 import { RotateCcw, Play } from 'lucide-react'
 import { motion } from 'framer-motion';
+import TypingArea from '@/components/typing-area';
 
 function Race() {
 
-  const [currentText, setCurrentText] = useState("");
   const [racers, setRacers] = useState<RacerType[]>([]);
-  const [wpm, setWpm] = useState(0);
-  const [userInput, setUserInput] = useState("");
-  const [accuracy, setAccuracy] = useState(100);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [userProgress, setUserProgress] = useState(0);
-  const [isRacing, setIsRacing] = useState(false);
   const [raceFinished, setRaceFinished] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    async function loadText() {
+  const [currentText, setCurrentText] = useState("");
+
+  const [wpm, setWpm] = useState(0);
+  const [accuracy, setAccuracy] = useState(100);
+  const [progress, setProgress] = useState({
+    currentWordIdx: 0,
+    totalWords: 0,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  const progressPercentage =
+  progress.totalWords === 0
+    ? 0
+    : Math.round(
+        ((progress.currentWordIdx + 1) / progress.totalWords) * 100
+      );
+
+  const loadText = async () => {
+    try {
+      setIsLoading(true);
       const data = await getRandomTextAPI();
       setCurrentText(data.text);
+    } finally {
+      setIsLoading(false);
     }
-    loadText();
-  }, [])
+  };
 
   useEffect(() => {
-    if (isRacing && !raceFinished) {
+    loadText();
+  }, []);
+
+  useEffect(() => {
+    if (!raceFinished) {
       // Simulate other racers' progress
       const interval = setInterval(() => {
         setRacers(prev => prev.map(racer => {
@@ -47,7 +64,7 @@ function Race() {
 
       return () => clearInterval(interval);
     }
-  }, [isRacing, raceFinished]);
+  }, [raceFinished]);
 
   const startRace = () => {
     setCountdown(3);
@@ -55,10 +72,6 @@ function Race() {
       setCountdown(prev => {
         if (prev === 1) {
           clearInterval(countInterval);
-          setIsRacing(true);
-          setStartTime(Date.now());
-          // setCountdown(null);
-          inputRef.current?.focus();
           return null;
         }
         return prev! - 1;
@@ -77,59 +90,10 @@ function Race() {
     setRacers(mockRacers);
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    if (!startTime) setStartTime(Date.now());
-
-    setUserInput(value);
-
-    const progress = (value.length / currentText.length) * 100;
-    setUserProgress(progress);
-
-
-    // calculate accuracy
-    let correct = 0;
-    for (let i = 0; i < value.length; i++) {
-      if (value[i] == currentText[i]) correct++;
-    }
-
-    const acc = value.length > 0 ? (correct / value.length) * 100 : 100;
-    setAccuracy(Math.round(acc));
-
-
-    // calculate WPM
-    if (startTime) {
-      const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
-      const wordsTyped = value.split(' ').length;
-      const currentWpm = Math.round(wordsTyped / timeElapsed);
-      setWpm(currentWpm);
-    }
-  }
-
-  const generateNewText = async () => {
-    const data = await getRandomTextAPI();
-    setCurrentText(data.text);
-  }
-
-  const resetRace = () => {
-    generateNewText();
-    setUserInput('');
-    setStartTime(null);
+  const onClickNewRace = () => {
+    loadText();
     setWpm(0);
-    setIsRacing(false);
-    setRaceFinished(false);
-    setUserProgress(0);
-  }
-
-
-  const getCharacterClass = (index: number) => {
-    if (index >= userInput.length) {
-      return 'text-gray-400';
-    }
-    return userInput[index] === currentText[index]
-      ? 'text-green-600'
-      : 'text-red-600';
+    setAccuracy(100);
   }
 
   return (
@@ -138,7 +102,7 @@ function Race() {
         {/* header */}
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Race Mode</h1>
-          <Button variant="ghost" className='border-2 cursor-pointer' onClick={resetRace}>
+          <Button variant="ghost" className='border-2 cursor-pointer' onClick={onClickNewRace}>
             <RotateCcw />
             New Race
           </Button>
@@ -185,11 +149,11 @@ function Race() {
               <div className="flex-1 bg-gray-300 dark:bg-gray-700 rounded-full h-10 relative overflow-hidden shadow-inner">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${userProgress}%` }}
+                  animate={{ width: `${[progressPercentage]}%` }}
                   className="bg-gradient-to-r from-blue-600 to-blue-400 h-full flex items-center justify-end px-3 shadow-lg"
                   transition={{ duration: 0.3 }}
                 >
-                  <span className="text-white text-sm font-bold">{Math.round(userProgress)}%</span>
+                  <span className="text-white text-sm font-bold">{Math.round(progressPercentage)}%</span>
                 </motion.div>
               </div>
               <div className="w-24 text-right font-bold text-blue-700 dark:text-blue-400 text-lg">{wpm} WPM</div>
@@ -219,28 +183,18 @@ function Race() {
             ))}
           </div>
 
-          <div className="mb-6 p-8 bg-gradient-to-br rounded-xl text-2xl font-mono leading-relaxed border-2 h-70 overflow-scroll border-gray-200 dark:border-gray-700 shadow-inner">
-            {currentText.split('').map((char, index) => (
-              <span
-                key={index}
-                className={`${getCharacterClass(index)} transition-all duration-300`}
-              >
-                {char}
-              </span>
-            ))}
-          </div>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={userInput}
-            onChange={handleInputChange}
-            // disabled={isComplete}
-            className="w-full p-5 text-xl border-2 rounded-xl focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono transition-all"
-            placeholder="Start typing here..."
-            autoFocus
+          <TypingArea
+            text={currentText}
+            onStatsChange={(stats) => {
+              setWpm(stats.wpm);
+              setAccuracy(stats.accuracy);
+              setRaceFinished(stats.isComplete)
+            }}
+            onProgressChange={(data) => {
+              setProgress(data);
+            }}
+            isLoading={isLoading}
           />
-
 
         </Card>
       </div>
