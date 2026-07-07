@@ -42,17 +42,53 @@ function Practice() {
     });
   }, [currentWordIdx]);
 
-  const updateStats = (nextTypedWords: string[]) => {
-    const correctWords = nextTypedWords.filter(
-      (word, idx) => word === words[idx]
-    ).length;
+  const updateStats = (
+    nextTypedWords: string[],
+    currentInput: string
+  ) => {
+    let correctChars = 0;
+    let totalTypedChars = 0;
 
-    const totalWords = nextTypedWords.length;
+    // Completed words
+    nextTypedWords.forEach((typedWord, index) => {
+      const expectedWord = words[index];
+
+      for (
+        let i = 0;
+        i < typedWord.length;
+        i++
+      ) {
+        totalTypedChars++;
+
+        if (typedWord[i] === expectedWord[i]) {
+          correctChars++;
+        }
+      }
+    });
+
+    // Current word
+    const expectedCurrentWord = words[nextTypedWords.length];
+
+    if (expectedCurrentWord) {
+      for (
+        let i = 0;
+        i < currentInput.length;
+        i++
+      ) {
+        totalTypedChars++;
+
+        if (currentInput[i] === expectedCurrentWord[i]) {
+          correctChars++;
+        }
+      }
+    }
 
     const nextAccuracy =
-      totalWords === 0
+      totalTypedChars === 0
         ? 100
-        : Math.round((correctWords / totalWords) * 100);
+        : Math.round(
+          (correctChars / totalTypedChars) * 100
+        );
 
     setAccuracy(nextAccuracy);
 
@@ -60,75 +96,63 @@ function Practice() {
       const minutes =
         (Date.now() - startTime) / 1000 / 60;
 
-      const nextWpm = Math.round(
-        correctWords / Math.max(minutes, 0.01)
-      );
+      const totalChars =
+        nextTypedWords.join("").length +
+        currentInput.length;
 
-      setWpm(nextWpm);
+      setWpm(
+        Math.round(
+          totalChars / 5 / Math.max(minutes, 0.01)
+        )
+      );
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-
+  
     if (!startTime) setStartTime(Date.now());
-
-    if (value.endsWith(" ")) {
-      const typedWord = value.trim();
-      if (!typedWord) {
-        setUserInput('');
-        return;
-      }
-
-      const nextTypedWords = [...typedWords, typedWord];
+  
+    const currentWord = words[currentWordIdx];
+  
+    // User finished the final word (without needing space)
+    if (
+      currentWordIdx === words.length - 1 &&
+      value === currentWord
+    ) {
+      const nextTypedWords = [...typedWords, value];
+  
       setTypedWords(nextTypedWords);
-      updateStats(nextTypedWords);
-
-      if (currentWordIdx >= words.length - 1) {
-        setIsComplete(true);
-        setUserInput('');
-        return;
-      }
-
-      setCurrentWordIdx(prev => prev + 1);
-      setUserInput('');
+      updateStats(nextTypedWords, "");
+  
+      setIsComplete(true);
+      setUserInput("");
       return;
     }
-
+  
+    // Space pressed -> finish current word
+    if (value.endsWith(" ")) {
+      const typedWord = value.trim();
+  
+      if (!typedWord) {
+        setUserInput("");
+        return;
+      }
+  
+      const nextTypedWords = [...typedWords, typedWord];
+  
+      setTypedWords(nextTypedWords);
+      updateStats(nextTypedWords, "");
+  
+      setCurrentWordIdx(prev => prev + 1);
+      setUserInput("");
+      return;
+    }
+  
+    // Normal typing
     setUserInput(value);
-
-
-    // // calculate accuracy
-    // let correct = 0;
-    // for(let i = 0; i < value.length; i++)
-    // {
-    //   if(value[i] == currentText[i]) correct++;
-    // }
-
-    // const acc = value.length > 0 ? (correct / value.length) * 100 : 100;
-    // setAccuracy(Math.round(acc));
-
-
-    // // calculate WPM
-    // if (startTime) {
-    //   const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
-    //   const wordsTyped = value.split(' ').length;
-    //   const currentWpm = Math.round(wordsTyped / timeElapsed);
-    //   setWpm(currentWpm);
-    // }
-
-    // // Check if complete
-    // if (value === currentText) {
-    //   setIsComplete(true);
-    //   const wordsTyped = value.split(' ').length;
-    //   // updateStats(currentWpm, acc, wordsTyped, 'practice');
-    //   confetti({
-    //     particleCount: 100,
-    //     spread: 70,
-    //     origin: { y: 0.6 }
-    //   });
-    // }
-  }
+    updateStats(typedWords, value);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (
@@ -173,19 +197,19 @@ function Practice() {
   }
 
 
-  const renderCurrentWord = (word: string) => {
-    return word.split('').map((char, i) => {
-      let className = 'text-gray-400';
+  const renderCurrentWord = (word: string, typedWord: string = "") => {
+    return word.split("").map((char, index) => {
+      let className = "text-gray-400";
 
-      if (i < userInput.length) {
+      if (index < typedWord.length) {
         className =
-          userInput[i] === char
-            ? 'text-green-600'
-            : 'text-red-600';
+          typedWord[index] === char
+            ? "text-green-600"
+            : "text-red-600";
       }
 
       return (
-        <span key={i} className={className}>
+        <span key={index} className={className}>
           {char}
         </span>
       );
@@ -232,7 +256,7 @@ function Practice() {
             >
               <div className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">Progress</div>
               <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-                {Math.min(currentWordIdx, words.length)}/ {words.length}
+                {Math.min(currentWordIdx + 1, words.length)}/ {words.length}
               </div>
             </div>
           </div>
@@ -243,15 +267,10 @@ function Practice() {
             {!isLoading && words.map((word, index) => {
               // Completed words
               if (index < typedWords.length) {
-                const correct = typedWords[index] === words[index];
-
                 return (
-                  <span
-                    id={`word-${index}`}
-                    key={index}
-                    className={correct ? 'text-green-600' : 'text-red-600'}
-                  >
-                    {word}{' '}
+                  <span id={`word-${index}`} key={index}>
+                    {renderCurrentWord(word, typedWords[index])}
+                    {" "}
                   </span>
                 );
               }
@@ -260,10 +279,10 @@ function Practice() {
               if (index === currentWordIdx) {
                 return (
                   <span id={`word-${index}`} key={index}>
-                    <span className='border-b-2 border-blue-500'>
-                      {renderCurrentWord(word)}
+                    <span className="border-b-2 border-blue-500">
+                      {renderCurrentWord(word, userInput)}
                     </span>
-                    {' '}
+                    {" "}
                   </span>
                 );
               }
@@ -271,7 +290,7 @@ function Practice() {
               // Future words
               return (
                 <span id={`word-${index}`} key={index} className="text-gray-400">
-                  {word}{' '}
+                  {word}{" "}
                 </span>
               );
             })}
