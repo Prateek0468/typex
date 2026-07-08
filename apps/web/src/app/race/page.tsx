@@ -12,7 +12,7 @@ import TypingArea from '@/components/typing-area';
 function Race() {
 
   const [racers, setRacers] = useState<RacerType[]>([]);
-  const [raceFinished, setRaceFinished] = useState(false);
+  // const [raceFinished, setRaceFinished] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const [currentText, setCurrentText] = useState("");
@@ -24,14 +24,16 @@ function Race() {
     totalWords: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
-
+  const [raceStarted, setRaceStarted] = useState(false);
 
   const progressPercentage =
-  progress.totalWords === 0
-    ? 0
-    : Math.round(
+    progress.totalWords === 0
+      ? 0
+      : Math.round(
         ((progress.currentWordIdx + 1) / progress.totalWords) * 100
       );
+
+  const totalWords = currentText.trim().split(/\s+/).length;
 
   const loadText = async () => {
     try {
@@ -48,23 +50,32 @@ function Race() {
   }, []);
 
   useEffect(() => {
-    if (!raceFinished) {
-      // Simulate other racers' progress
-      const interval = setInterval(() => {
-        setRacers(prev => prev.map(racer => {
+    if (!raceStarted) return;
+  
+    const interval = setInterval(() => {
+      setRacers(prev =>
+        prev.map(racer => {
           if (racer.progress >= 100) return racer;
-
-          const speedVariation = 0.5 + Math.random() * 1.5;
-          const newProgress = Math.min(100, racer.progress + speedVariation);
-          const newWpm = Math.round(40 + Math.random() * 40);
-
-          return { ...racer, progress: newProgress, wpm: newWpm };
-        }));
-      }, 100);
-
-      return () => clearInterval(interval);
-    }
-  }, [raceFinished]);
+  
+          // interval is 100ms
+          const wordsTyped = (racer.wpm / 60) * 0.1;
+  
+          const progressIncrease =
+            (wordsTyped / totalWords) * 100;
+  
+          return {
+            ...racer,
+            progress: Math.min(
+              100,
+              racer.progress + progressIncrease
+            ),
+          };
+        })
+      );
+    }, 100);
+  
+    return () => clearInterval(interval);
+  }, [raceStarted, totalWords]);
 
   const startRace = () => {
     setCountdown(3);
@@ -72,6 +83,7 @@ function Race() {
       setCountdown(prev => {
         if (prev === 1) {
           clearInterval(countInterval);
+          setRaceStarted(true);
           return null;
         }
         return prev! - 1;
@@ -82,10 +94,10 @@ function Race() {
   useEffect(() => {
     // Generate mock racers
     const mockRacers: RacerType[] = [
-      { id: 1, name: 'SpeedTyper92', progress: 0, wpm: 0, color: RACER_COLORS[0] },
-      { id: 2, name: 'KeyboardNinja', progress: 0, wpm: 0, color: RACER_COLORS[1] },
-      { id: 3, name: 'TypeMaster', progress: 0, wpm: 0, color: RACER_COLORS[2] },
-      { id: 4, name: 'QuickFingers', progress: 0, wpm: 0, color: RACER_COLORS[3] },
+      { id: 1, name: 'SpeedTyper92', progress: 0, wpm: 55, color: RACER_COLORS[0] },
+      { id: 2, name: 'KeyboardNinja', progress: 0, wpm: 48, color: RACER_COLORS[1] },
+      { id: 3, name: 'TypeMaster', progress: 0, wpm: 62, color: RACER_COLORS[2] },
+      { id: 4, name: 'QuickFingers', progress: 0, wpm: 74, color: RACER_COLORS[3] },
     ];
     setRacers(mockRacers);
   }, []);
@@ -188,7 +200,6 @@ function Race() {
             onStatsChange={(stats) => {
               setWpm(stats.wpm);
               setAccuracy(stats.accuracy);
-              setRaceFinished(stats.isComplete)
             }}
             onProgressChange={(data) => {
               setProgress(data);

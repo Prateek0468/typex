@@ -8,12 +8,14 @@ type TypingAreaProps = {
   onStatsChange: (stats: {
     wpm: number;
     accuracy: number;
-    isComplete: boolean;
   }) => void;
   onProgressChange: (progress: {
     currentWordIdx: number;
     totalWords: number;
   }) => void;
+  // onFinish?: (data: {
+  //   isComplete: boolean;
+  // }) => void
   isLoading: boolean
 };
 
@@ -21,6 +23,7 @@ export default function TypingArea({
   text,
   onStatsChange,
   onProgressChange,
+  // onFinish,
   isLoading
 }: TypingAreaProps) {
 
@@ -60,7 +63,7 @@ export default function TypingArea({
   useEffect(() => {
     const el = document.getElementById(`word-${currentWordIdx}`);
 
-    el?.scrollIntoView({ behavior: "smooth", block: "nearest"});
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   }, [currentWordIdx]);
 
@@ -136,7 +139,6 @@ export default function TypingArea({
     onStatsChange({
       wpm: nextWpm,
       accuracy: nextAccuracy,
-      isComplete: isComplete,
     });
   };
 
@@ -170,6 +172,7 @@ export default function TypingArea({
       );
 
       setIsComplete(true);
+      // onFinish({ isComplete });
       setUserInput("");
       return;
     }
@@ -267,7 +270,7 @@ export default function TypingArea({
           </div>
         )}
 
-        
+
         {!isLoading && words.map((word, index) => {
           // Completed words
           if (index < typedWords.length) {
