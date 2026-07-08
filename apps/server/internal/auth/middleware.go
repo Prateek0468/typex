@@ -11,7 +11,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			utils.WriteJSON(w, http.StatusUnauthorized, map[string] string {
-				"errro": "not logged in",
+				"error": "not logged in",
 			})
 
 			return
