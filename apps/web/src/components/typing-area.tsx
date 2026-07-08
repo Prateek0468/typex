@@ -1,5 +1,6 @@
 'use client';
 
+import { updateUserStats } from '@/lib/utils';
 import { LoaderPinwheel } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -13,18 +14,20 @@ type TypingAreaProps = {
     currentWordIdx: number;
     totalWords: number;
   }) => void;
-  // onFinish?: (data: {
-  //   isComplete: boolean;
-  // }) => void
-  isLoading: boolean
+  isLoading: boolean;
+  isRace?: boolean;
+  wpm?: number;
+  accuracy?: number;
 };
 
 export default function TypingArea({
   text,
   onStatsChange,
   onProgressChange,
-  // onFinish,
-  isLoading
+  isLoading,
+  isRace,
+  wpm = 0, 
+  accuracy = 100,
 }: TypingAreaProps) {
 
   const [typedWords, setTypedWords] = useState<string[]>([]);
@@ -52,6 +55,11 @@ export default function TypingArea({
   }, [text]);
 
   useEffect(() => {
+    if(!isRace || !isComplete) return;
+    updateUserStats(wpm, accuracy);
+  }, [isRace, isComplete, wpm, accuracy])
+
+  useEffect(() => {
     onProgressChange({
       currentWordIdx,
       totalWords: words.length,
@@ -60,6 +68,7 @@ export default function TypingArea({
   }, [currentWordIdx, words.length]);
 
 
+  // this is auto-scrolls and focuses on the next line at the end of text area
   useEffect(() => {
     const el = document.getElementById(`word-${currentWordIdx}`);
 
@@ -67,8 +76,7 @@ export default function TypingArea({
 
   }, [currentWordIdx]);
 
-
-
+  // updating stats
   const updateStats = (
     nextTypedWords: string[],
     currentInput: string
@@ -141,7 +149,6 @@ export default function TypingArea({
       accuracy: nextAccuracy,
     });
   };
-
 
 
   const handleInputChange = (
@@ -233,6 +240,7 @@ export default function TypingArea({
     }
   };
 
+  // word coloring
   const renderCurrentWord = (
     word: string,
     typedWord: string = ""

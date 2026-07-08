@@ -22,6 +22,31 @@ export const getRandomTextAPI = async () => {
   return res.json();
 }
 
+export const updateUserStats = async (wpm: number, accuracy: number) => {
+  try {
+    const response = await fetch(`${baseURL}/race/finish`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ wpm, accuracy })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message);
+    }
+
+    console.log("user stas updated successfully: ", result);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 /**
    * Calculates Words Per Minute (WPM) based on user input and elapsed time
    * WPM = (words typed / time in minutes) * 60

@@ -51,18 +51,18 @@ function Race() {
 
   useEffect(() => {
     if (!raceStarted) return;
-  
+
     const interval = setInterval(() => {
       setRacers(prev =>
         prev.map(racer => {
           if (racer.progress >= 100) return racer;
-  
+
           // interval is 100ms
           const wordsTyped = (racer.wpm / 60) * 0.1;
-  
+
           const progressIncrease =
             (wordsTyped / totalWords) * 100;
-  
+
           return {
             ...racer,
             progress: Math.min(
@@ -73,7 +73,7 @@ function Race() {
         })
       );
     }, 100);
-  
+
     return () => clearInterval(interval);
   }, [raceStarted, totalWords]);
 
@@ -100,7 +100,7 @@ function Race() {
       { id: 4, name: 'QuickFingers', progress: 0, wpm: 74, color: RACER_COLORS[3] },
     ];
     setRacers(mockRacers);
-  }, []);
+  }, [currentText]);
 
   const onClickNewRace = () => {
     loadText();
@@ -110,6 +110,7 @@ function Race() {
 
   return (
     <div className='font-michroma flex flex-col justify-center items-center'>
+      <h1 className='text-yellow-500 mb-8'>You&apos;re racing against bots for now. Actual Racing feature with other players is coming soon!!!!!</h1>
       <div className='flex flex-col gap-6 w-6xl'>
         {/* header */}
         <div className='flex justify-between items-center'>
@@ -205,6 +206,9 @@ function Race() {
               setProgress(data);
             }}
             isLoading={isLoading}
+            isRace
+            wpm={wpm}
+            accuracy={wpm}
           />
 
         </Card>
