@@ -11,6 +11,7 @@ import TypingArea from '@/components/typing-area';
 
 function Race() {
 
+
   const [racers, setRacers] = useState<RacerType[]>([]);
   // const [raceFinished, setRaceFinished] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -25,6 +26,19 @@ function Race() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [raceStarted, setRaceStarted] = useState(false);
+
+  // const socket = new WebSocket("ws://localhost:8080/ws");
+
+  // socket.onopen = () => {
+  //   console.log("Connected!");
+
+  //   socket.send("hello");
+  // };
+
+  // socket.onmessage = (event) => {
+  //   console.log(event.data);
+  // };
+
 
   const progressPercentage =
     progress.totalWords === 0
@@ -97,7 +111,7 @@ function Race() {
       { id: 1, name: 'SpeedTyper92', progress: 0, wpm: 55, color: RACER_COLORS[0] },
       { id: 2, name: 'KeyboardNinja', progress: 0, wpm: 48, color: RACER_COLORS[1] },
       { id: 3, name: 'TypeMaster', progress: 0, wpm: 62, color: RACER_COLORS[2] },
-      { id: 4, name: 'QuickFingers', progress: 0, wpm: 74, color: RACER_COLORS[3] },
+      // { id: 4, name: 'QuickFingers', progress: 0, wpm: 74, color: RACER_COLORS[3] },
     ];
     setRacers(mockRacers);
   }, [currentText]);
