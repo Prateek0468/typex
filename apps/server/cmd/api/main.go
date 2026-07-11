@@ -10,6 +10,7 @@ import (
 	"typex-server/internal/db"
 	"typex-server/internal/handlers"
 	"typex-server/internal/user"
+	"typex-server/internal/websocket"
 
 	"github.com/joho/godotenv"
 )
@@ -36,6 +37,9 @@ func main() {
 	// set up a request multiplexer
 	// routes incoming HTTP requests to the right handler based on the URL path
 	mux := http.NewServeMux()
+
+	//create websocket hub
+	hub := websocket.NewHub()
 
 	// load env file
 	err := godotenv.Load();
@@ -64,13 +68,14 @@ func main() {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([] byte("server is running"))
 	})
+	mux.HandleFunc("/ws", websocket.Handle(hub))
 	mux.HandleFunc("/signup", handler.Signup)
 	mux.HandleFunc("/login", handler.Login)
 	mux.HandleFunc("/logout", handler.Logout)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
 	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
 	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
-
+	
 	corshandler := enableCors(mux)
 
 
