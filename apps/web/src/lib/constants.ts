@@ -48,13 +48,13 @@ export const themes: Theme[] = [
 export const CardOptions: NavigationCardsType[] = [
   {
     icon: Keyboard,
-    title: "Practice Mode",
+    title: "Practice",
     href: "/practice",
     description: "Improve your typing skills at your own pace with customizable exercises"
   },
   {
     icon: Trophy,
-    title: "Race Mode",
+    title: "Multiplayer",
     href: "/race",
     description: "Compete against others in real-time typing races"
   },
