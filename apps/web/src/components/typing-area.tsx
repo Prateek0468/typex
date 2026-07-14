@@ -1,6 +1,5 @@
 'use client';
 
-import { updateUserStats } from '@/lib/utils';
 import { LoaderPinwheel } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -30,9 +29,6 @@ export default function TypingArea({
   onStatsChange,
   onProgressChange,
   isLoading,
-  isRace,
-  wpm = 0, 
-  accuracy = 100,
   disabled = false,
   onComplete,
 }: TypingAreaProps) {
@@ -60,11 +56,6 @@ export default function TypingArea({
 
     inputRef.current?.focus();
   }, [text]);
-
-  useEffect(() => {
-    if(!isRace || !isComplete) return;
-    updateUserStats(wpm, accuracy);
-  }, [isRace, isComplete, wpm, accuracy])
 
   useEffect(() => {
     onProgressChange({

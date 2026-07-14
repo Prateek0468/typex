@@ -22,7 +22,7 @@ function LeaderboardPage() {
         </div>
         <h1 className="text-4xl font-bold">Leaderboard</h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          Your best completed races are saved here. Backend-backed global rankings are listed in the README roadmap.
+          Signed-in race results appear here. Guests can still race, but their results stay temporary in the header.
         </p>
       </div>
 
@@ -40,7 +40,7 @@ function LeaderboardPage() {
             <Medal className="size-10 text-muted-foreground" />
             <h2 className="text-xl font-bold">No races completed yet</h2>
             <p className="max-w-md leading-7 text-muted-foreground">
-              Finish a global or private race and your result will appear here.
+              Log in, finish a global or private race, and your result will appear here.
             </p>
           </div>
         ) : (

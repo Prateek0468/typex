@@ -1,14 +1,16 @@
 # TypeX
 
-TypeX is a typing practice and racing app. The MVP lets users practice with random passages, create private race rooms, join a global race room, see live racer progress, and save completed race results to a local leaderboard.
+TypeX is a typing practice and racing app. The MVP lets users practice with random passages, play as a guest, create private race rooms, join a global race room, see live racer progress, and save signed-in race results to a leaderboard.
 
 ## MVP Features
 
 - Practice mode with live WPM, accuracy, and word progress.
 - Global racing room at `/room/global`.
-- Private racing rooms with shareable room codes.
-- WebSocket-based race start, reset, progress, and finish messages.
-- Local leaderboard for completed races.
+- Server-created private racing rooms with shareable room codes.
+- WebSocket-based room snapshots for joins, refreshes, progress, race starts, resets, finishes, and disconnects.
+- Timer-based races that end when the room timer expires.
+- Guest session stats shown in the header.
+- Local leaderboard for signed-in completed races.
 - Light and dark theme support.
 - Go backend for auth, text generation, stat updates, and WebSocket broadcasting.
 
@@ -65,27 +67,37 @@ JWT_SECRET=replace_me
 
 ## How Racing Works
 
-The MVP uses the existing Go WebSocket hub as a broadcast server. The frontend sends JSON messages with a `roomId`, so each browser only processes messages for the room it joined.
+Rooms are created by the Go server and kept in an in-memory room store for the MVP. The same room store is shared by the HTTP room handlers and the WebSocket hub.
 
-Supported client message types:
+The room flow:
+
+1. The client calls `POST /rooms` to create a private room.
+2. The client opens `/room/{ROOM_ID}` or `/room/global`.
+3. The browser joins the WebSocket room with a stable guest or user id.
+4. The server sends a full room snapshot so refreshes and late joiners see the same racers.
+5. Starting a race sets a server `startedAt`, `endsAt`, and text for the whole room.
+6. The race ends when the timer expires, not when the fastest user finishes.
+7. Private rooms are deleted automatically after they expire or stay inactive.
+
+Supported WebSocket message types:
 
 - `join`: a racer entered the room.
-- `start`: a racer started the countdown with the current text.
+- `start`: a racer started the room countdown with the current text.
 - `progress`: a racer updated progress, WPM, and accuracy.
 - `finish`: a racer completed the race.
 - `reset`: a racer loaded a new text for the room.
+- `expire`: the client asks the server to close a race whose timer has ended.
 
 ## Current MVP Limits
 
-- The leaderboard is stored in browser local storage, not yet in PostgreSQL.
-- Private room codes are generated on the client.
-- The WebSocket hub broadcasts to all connected users, and the frontend filters by `roomId`.
-- There is no reconnect recovery or server-side winner validation yet.
+- Private rooms are stored in memory, so they reset when the Go server restarts.
+- The leaderboard is stored in browser local storage for signed-in users.
+- The global room is a single public lobby.
+- Server-side anti-cheat and winner validation are still basic.
 
-## Post-MVP Roadmap for CV Impact
+## Post-MVP Roadmap
 
-- Add persistent global leaderboards backed by PostgreSQL with ranked queries and pagination.
-- Add server-side room state so rooms survive refreshes and late joiners receive current race data.
+- Move room state and leaderboard results to PostgreSQL with ranked queries and pagination.
 - Add Redis pub/sub or a managed realtime service for multi-instance deployment.
 - Add OAuth login and public user profiles with best WPM, average accuracy, streaks, and race history.
 - Add anti-cheat checks using expected text, elapsed time, impossible WPM thresholds, and server timestamps.

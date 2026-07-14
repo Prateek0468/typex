@@ -12,6 +12,13 @@ export type UserType = {
   id: string;
 }
 
+export type SessionStats = {
+  totalRaces: number;
+  averageWpm: number;
+  averageAccuracy: number;
+  bestWpm: number;
+}
+
 export type NavigationCardsType = {
   icon: LucideIcon;
   title: string;
@@ -31,6 +38,7 @@ export type RacerType = {
 
 export type LeaderboardEntry = {
   id: string;
+  userId: string;
   name: string;
   mode: string;
   roomId: string;

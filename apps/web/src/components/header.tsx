@@ -6,7 +6,8 @@ import { Button } from './ui/button';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import LoginForm from './login-form';
-import { UserType } from '@/lib/constants';
+import { SessionStats, UserType } from '@/lib/constants';
+import { getCurrentUser, loadSessionStats } from '@/lib/utils';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -16,22 +17,33 @@ function Header() {
   const [mounted, setMounted] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [user, setUser] = useState<UserType>();
+  const [sessionStats, setSessionStats] = useState<SessionStats>({
+    totalRaces: 0,
+    averageWpm: 0,
+    averageAccuracy: 100,
+    bestWpm: 0,
+  });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    fetch(`${apiUrl}/user`, {
-      method: "GET",
-      credentials: "include"
-    })
-      .then((response) => response.json())
-      .then(res => {
-        if (res.error) setUser(undefined);
-        else setUser(res);
-      });
+    getCurrentUser().then(res => {
+      setUser(res ?? undefined);
+    });
   }, [])
+
+  useEffect(() => {
+    setSessionStats(loadSessionStats());
+
+    const refreshStats = () => setSessionStats(loadSessionStats());
+    window.addEventListener("typex-session-stats-updated", refreshStats);
+
+    return () => {
+      window.removeEventListener("typex-session-stats-updated", refreshStats);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -79,6 +91,11 @@ function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <div className="hidden rounded-lg border px-3 py-2 text-xs leading-5 text-muted-foreground sm:block">
+            <span className="font-semibold text-foreground">{sessionStats.bestWpm}</span> best WPM
+            <span className="mx-2">·</span>
+            <span className="font-semibold text-foreground">{sessionStats.averageAccuracy}%</span> avg accuracy
+          </div>
 
           <Button
             onClick={() =>

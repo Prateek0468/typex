@@ -8,7 +8,7 @@ import (
 
 // converts a normal HTTP conn to a websocket conn
 var upgrader = websocket.Upgrader{
-	
+
 	// browsers block ws conn from diff origins so we allow every origin for dev purposes
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -24,12 +24,8 @@ func Handle(hub *Hub) http.HandlerFunc {
 			return
 		}
 
-		// add this client to hub and check if we have 5 users already
-		if !hub.Add(conn) {
-			conn.WriteMessage(websocket.TextMessage, []byte("Lobby full"))
-			conn.Close()
-			return
-		}
+		// Store the connection first. The first client message decides which room it belongs to.
+		hub.Add(conn)
 
 		// when this func exists(disconnects, browser closes etc) auto remove the client
 		defer hub.Remove(conn)
@@ -41,7 +37,7 @@ func Handle(hub *Hub) http.HandlerFunc {
 				break
 			}
 
-			hub.Broadcast(conn, msg)
+			hub.HandleMessage(conn, msg)
 		}
 	}
 }

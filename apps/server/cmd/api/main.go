@@ -9,6 +9,7 @@ import (
 	"typex-server/internal/auth"
 	"typex-server/internal/db"
 	"typex-server/internal/handlers"
+	"typex-server/internal/room"
 	"typex-server/internal/user"
 	"typex-server/internal/websocket"
 
@@ -20,16 +21,16 @@ func enableCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")	
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-	
+
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
 		next.ServeHTTP(w, r)
-	
+
 	})
 }
 
@@ -38,11 +39,15 @@ func main() {
 	// routes incoming HTTP requests to the right handler based on the URL path
 	mux := http.NewServeMux()
 
+	// Keep active race rooms in memory for the MVP.
+	// This gives the websocket hub and HTTP room handlers the same source of truth.
+	roomStore := room.NewMemoryStore()
+
 	//create websocket hub
-	hub := websocket.NewHub()
+	hub := websocket.NewHub(roomStore)
 
 	// load env file
-	err := godotenv.Load();
+	err := godotenv.Load()
 	if err != nil {
 		panic(".env file not found")
 	}
@@ -62,22 +67,22 @@ func main() {
 	defer pool.Close()
 
 	userRepo := user.NewRepository(pool)
-	handler := handlers.NewHandler(userRepo)
-
+	handler := handlers.NewHandler(userRepo, roomStore)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([] byte("server is running"))
+		w.Write([]byte("server is running"))
 	})
 	mux.HandleFunc("/ws", websocket.Handle(hub))
 	mux.HandleFunc("/signup", handler.Signup)
 	mux.HandleFunc("/login", handler.Login)
 	mux.HandleFunc("/logout", handler.Logout)
+	mux.HandleFunc("/rooms", handler.Rooms)
+	mux.HandleFunc("/rooms/", handler.RoomByID)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
 	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
 	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
-	
-	corshandler := enableCors(mux)
 
+	corshandler := enableCors(mux)
 
 	// verify connection
 	if err := pool.Ping(context.Background()); err != nil {

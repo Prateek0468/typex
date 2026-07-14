@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { createRoomCode } from "@/lib/utils";
+import { createRoomAPI, getRandomTextAPI } from "@/lib/utils";
 import { ArrowRight, CopyPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,14 +12,20 @@ export default function RoomPage() {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [roomCode, setRoomCode] = useState<string>('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
   const createRoom = async () => {
-    // The backend room table is not wired to routes yet, so the MVP creates a client-side code.
-    // Each websocket message includes this code, which lets private rooms ignore other rooms.
-    setLoading(true);
-    const nextRoomCode = createRoomCode();
-    router.push(`/room/${nextRoomCode}`);
+    try {
+      setLoading(true);
+      setError('');
+      const data = await getRandomTextAPI();
+      const room = await createRoomAPI(data.text);
+      router.push(`/room/${room.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create room');
+      setLoading(false);
+    }
   }
 
   const joinRoom = () => {
@@ -43,6 +49,11 @@ export default function RoomPage() {
           <p className="mt-2 leading-7 text-muted-foreground">
             Create a room code, share the URL with friends, and start the same typing race together.
           </p>
+          {error && (
+            <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+              {error}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">

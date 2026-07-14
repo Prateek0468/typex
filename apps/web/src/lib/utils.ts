@@ -1,10 +1,12 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { typingdata } from "../app/data";
-import { LeaderboardEntry } from "./constants";
+import { LeaderboardEntry, SessionStats, UserType } from "./constants";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 const leaderboardStorageKey = "typex-leaderboard";
+const sessionStatsStorageKey = "typex-session-stats";
+const guestProfileStorageKey = "typex-guest-profile";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -43,10 +45,60 @@ export const updateUserStats = async (wpm: number, accuracy: number) => {
       throw new Error(result.message);
     }
 
-    console.log("user stas updated successfully: ", result);
   } catch (err) {
-    console.error(err);
+    // Guests are allowed to play, so stat sync can fail quietly when there is no auth cookie.
+    if (process.env.NODE_ENV === "development") {
+      console.error(err);
+    }
   }
+}
+
+export const getCurrentUser = async (): Promise<UserType | null> => {
+  try {
+    const response = await fetch(`${baseURL}/user`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const result = await response.json();
+
+    if (!response.ok || result.error) return null;
+
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+export const createRoomAPI = async (text: string) => {
+  const response = await fetch(`${baseURL}/rooms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text }),
+  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create room");
+  }
+
+  return result as {
+    id: string;
+    expiresAt: string;
+    maxPlayers: number;
+  };
+}
+
+export const getRoomAPI = async (roomId: string) => {
+  const response = await fetch(`${baseURL}/rooms/${roomId}`);
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Room not found");
+  }
+
+  return result;
 }
 
 export const getWebSocketURL = () => {
@@ -60,9 +112,72 @@ export const getWebSocketURL = () => {
 }
 
 export const createRoomCode = () => {
-  // A short readable code is enough for the MVP because the websocket server currently broadcasts messages.
-  // The client still includes roomId in every message, so different rooms can ignore each other.
   return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+export const getGuestProfile = () => {
+  if (typeof window === "undefined") {
+    return {
+      id: "guest",
+      name: "Guest",
+    };
+  }
+
+  const savedProfile = window.sessionStorage.getItem(guestProfileStorageKey);
+  if (savedProfile) return JSON.parse(savedProfile) as { id: string; name: string };
+
+  const profile = {
+    id: crypto.randomUUID(),
+    name: `Guest ${Math.floor(1000 + Math.random() * 9000)}`,
+  };
+
+  window.sessionStorage.setItem(guestProfileStorageKey, JSON.stringify(profile));
+  return profile;
+}
+
+export const loadSessionStats = (): SessionStats => {
+  if (typeof window === "undefined") {
+    return {
+      totalRaces: 0,
+      averageWpm: 0,
+      averageAccuracy: 100,
+      bestWpm: 0,
+    };
+  }
+
+  const savedStats = window.sessionStorage.getItem(sessionStatsStorageKey);
+  if (!savedStats) {
+    return {
+      totalRaces: 0,
+      averageWpm: 0,
+      averageAccuracy: 100,
+      bestWpm: 0,
+    };
+  }
+
+  return JSON.parse(savedStats);
+}
+
+export const recordSessionStats = (wpm: number, accuracy: number) => {
+  if (typeof window === "undefined") return;
+
+  const currentStats = loadSessionStats();
+  const totalRaces = currentStats.totalRaces + 1;
+  const nextStats = {
+    totalRaces,
+    averageWpm: Math.round(
+      ((currentStats.averageWpm * currentStats.totalRaces) + wpm) / totalRaces
+    ),
+    averageAccuracy: Math.round(
+      ((currentStats.averageAccuracy * currentStats.totalRaces) + accuracy) / totalRaces
+    ),
+    bestWpm: Math.max(currentStats.bestWpm, wpm),
+  };
+
+  window.sessionStorage.setItem(sessionStatsStorageKey, JSON.stringify(nextStats));
+  window.dispatchEvent(new CustomEvent("typex-session-stats-updated"));
+
+  return nextStats;
 }
 
 export const loadLeaderboard = (): LeaderboardEntry[] => {
@@ -70,7 +185,8 @@ export const loadLeaderboard = (): LeaderboardEntry[] => {
 
   try {
     const savedEntries = window.localStorage.getItem(leaderboardStorageKey);
-    return savedEntries ? JSON.parse(savedEntries) : [];
+    const entries = savedEntries ? JSON.parse(savedEntries) : [];
+    return entries.filter((entry: LeaderboardEntry) => Boolean(entry.userId));
   } catch {
     return [];
   }
@@ -79,7 +195,7 @@ export const loadLeaderboard = (): LeaderboardEntry[] => {
 export const saveLeaderboardEntry = (
   entry: Omit<LeaderboardEntry, "id" | "completedAt">
 ) => {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !entry.userId) return;
 
   const nextEntry: LeaderboardEntry = {
     ...entry,

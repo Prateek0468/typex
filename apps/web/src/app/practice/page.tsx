@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getRandomTextAPI } from '@/lib/utils';
+import { getCurrentUser, getRandomTextAPI, recordSessionStats, updateUserStats } from '@/lib/utils';
 import { RotateCcw, Target, Zap } from 'lucide-react';
 import TypingArea from '@/components/typing-area';
 
@@ -112,6 +112,13 @@ function Practice() {
             }}
             onProgressChange={(data) => {
               setProgress(data);
+            }}
+            onComplete={async (stats) => {
+              recordSessionStats(stats.wpm, stats.accuracy);
+              const user = await getCurrentUser();
+              if (user) {
+                updateUserStats(stats.wpm, stats.accuracy);
+              }
             }}
             isLoading={isLoading}
           />

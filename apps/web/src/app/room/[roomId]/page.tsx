@@ -6,50 +6,55 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import TypingArea from '@/components/typing-area';
-import { RACER_COLORS, RacerType } from '@/lib/constants';
+import { RACER_COLORS, RacerType, UserType } from '@/lib/constants';
 import {
+  getCurrentUser,
+  getGuestProfile,
   getRandomTextAPI,
+  getRoomAPI,
   getWebSocketURL,
+  recordSessionStats,
   saveLeaderboardEntry,
   updateUserStats,
 } from '@/lib/utils';
-import { Copy, Play, RotateCcw, Wifi, WifiOff } from 'lucide-react';
+import { Clock, Copy, Play, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 
-type RaceMessage =
-  | {
-      type: 'join';
-      roomId: string;
-      racer: RacerType;
-    }
-  | {
-      type: 'start';
-      roomId: string;
-      text: string;
-      startedBy: string;
-    }
-  | {
-      type: 'progress';
-      roomId: string;
-      racer: RacerType;
-    }
-  | {
-      type: 'finish';
-      roomId: string;
-      racer: RacerType;
-    }
-  | {
-      type: 'reset';
-      roomId: string;
-      text: string;
-    };
+type RoomStatus = 'waiting' | 'racing' | 'finished';
 
-const guestNames = [
-  'SwiftKeys',
-  'RapidType',
-  'WordRunner',
-  'KeyPilot',
-  'SyntaxSprinter',
-];
+type RoomSnapshot = {
+  room: {
+    id: string;
+    status: RoomStatus;
+    text: string;
+    startedAt?: number;
+    endsAt?: number;
+    durationSeconds: number;
+  };
+  racers: RacerType[];
+  now: number;
+};
+
+type ServerMessage = {
+  type: 'snapshot' | 'error';
+  roomId: string;
+  snapshot?: RoomSnapshot;
+  message?: string;
+};
+
+function estimateRaceDuration(text: string) {
+  // TypeRacer-style rooms should end by timer, not when the fastest racer finishes.
+  // This estimate gives short texts enough time while preventing very long open-ended races.
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(150, Math.max(30, Math.round((wordCount / 45) * 60)));
+}
+
+function getRacerColor(racerId: string) {
+  const colorIndex = racerId
+    .split('')
+    .reduce((total, char) => total + char.charCodeAt(0), 0) % RACER_COLORS.length;
+
+  return RACER_COLORS[colorIndex];
+}
 
 function RoomRacePage() {
   const params = useParams<{ roomId: string }>();
@@ -57,18 +62,17 @@ function RoomRacePage() {
   const isGlobalRoom = roomId === 'GLOBAL';
 
   const socketRef = useRef<WebSocket | null>(null);
-  const racerIdRef = useRef(
-    crypto.randomUUID()
-  );
-  const racerNameRef = useRef(
-    guestNames[Math.floor(Math.random() * guestNames.length)]
-  );
+  const expireSentRef = useRef(false);
+  const progressRef = useRef({
+    currentWordIdx: 0,
+    totalWords: 0,
+  });
 
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [racerId, setRacerId] = useState('');
+  const [racerName, setRacerName] = useState('Guest');
   const [currentText, setCurrentText] = useState('');
   const [connected, setConnected] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [raceStarted, setRaceStarted] = useState(false);
-  const [raceFinished, setRaceFinished] = useState(false);
   const [copied, setCopied] = useState(false);
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
@@ -77,7 +81,24 @@ function RoomRacePage() {
     totalWords: 0,
   });
   const [racers, setRacers] = useState<RacerType[]>([]);
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>('waiting');
+  const [startedAt, setStartedAt] = useState(0);
+  const [endsAt, setEndsAt] = useState(0);
+  const [clockOffset, setClockOffset] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const [isLoading, setIsLoading] = useState(false);
+  const [raceFinished, setRaceFinished] = useState(false);
+  const [error, setError] = useState('');
+
+  const serverNow = now + clockOffset;
+  const countdown = roomStatus === 'racing' && startedAt > serverNow
+    ? Math.ceil((startedAt - serverNow) / 1000)
+    : null;
+  const raceStarted = roomStatus === 'racing' && startedAt > 0 && serverNow >= startedAt;
+  const raceEnded = roomStatus === 'finished' || (endsAt > 0 && serverNow >= endsAt);
+  const timeLeftSeconds = endsAt > 0
+    ? Math.max(0, Math.ceil((endsAt - serverNow) / 1000))
+    : 0;
 
   const progressPercentage =
     progress.totalWords === 0
@@ -89,57 +110,82 @@ function RoomRacePage() {
           )
         );
 
-  const sortedRacers = useMemo(() => {
-    // Sorting by progress turns the racer list into the MVP leaderboard for the current room.
-    return [...racers]
-      .filter(racer => racer.id !== racerIdRef.current)
-      .sort(
-      (a, b) =>
-        b.progress - a.progress ||
-        b.wpm - a.wpm ||
-        (a.finishedAt || Infinity) - (b.finishedAt || Infinity)
-    );
-  }, [racers]);
-
   const localRacer: RacerType = {
-    id: racerIdRef.current,
-    name: racerNameRef.current,
-    progress: progressPercentage,
+    id: racerId,
+    name: racerName,
+    progress: raceFinished ? 100 : progressPercentage,
     wpm,
     accuracy,
-    color: RACER_COLORS[0],
+    color: getRacerColor(racerId),
     finishedAt: raceFinished ? Date.now() : undefined,
   };
 
-  const sendMessage = (message: RaceMessage) => {
-    // The Go server broadcasts plain websocket messages, so the client owns the JSON shape.
+  const sortedRacers = useMemo(() => {
+    return racers
+      .filter(racer => Boolean(racer.id))
+      .sort(
+        (a, b) =>
+          b.progress - a.progress ||
+          b.wpm - a.wpm ||
+          (a.finishedAt || Infinity) - (b.finishedAt || Infinity)
+      );
+  }, [racers]);
+
+  const sendMessage = (message: Record<string, unknown>) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(message));
     }
   };
 
-  const upsertRacer = (nextRacer: RacerType) => {
-    setRacers(prev => {
-      const withoutOldValue = prev.filter(racer => racer.id !== nextRacer.id);
-      return [...withoutOldValue, nextRacer];
-    });
-  };
+  const applySnapshot = (snapshot: RoomSnapshot) => {
+    setClockOffset(snapshot.now - Date.now());
+    setRoomStatus(snapshot.room.status);
+    setStartedAt(snapshot.room.startedAt || 0);
+    setEndsAt(snapshot.room.endsAt || 0);
+    setRacers(snapshot.racers);
 
-  const loadText = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getRandomTextAPI();
-      setCurrentText(data.text);
-    } finally {
-      setIsLoading(false);
+    if (snapshot.room.text) {
+      setCurrentText(snapshot.room.text);
+    }
+
+    if (snapshot.room.status === 'waiting') {
+      expireSentRef.current = false;
+      setRaceFinished(false);
     }
   };
 
   useEffect(() => {
-    loadText();
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 250);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
+    async function prepareRoom() {
+      try {
+        const [user, data] = await Promise.all([
+          getCurrentUser(),
+          getRoomAPI(roomId),
+        ]);
+        const guest = getGuestProfile();
+
+        setCurrentUser(user);
+        setRacerId(user?.id || guest.id);
+        setRacerName(user?.name || guest.name);
+        applySnapshot(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Room not found');
+      }
+    }
+
+    prepareRoom();
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!racerId || error) return;
+
     const socket = new WebSocket(getWebSocketURL());
     socketRef.current = socket;
 
@@ -158,42 +204,25 @@ function RoomRacePage() {
 
     socket.onmessage = event => {
       try {
-        const message = JSON.parse(event.data) as RaceMessage;
-        if (message.roomId !== roomId) return;
-
-        if (message.type === 'join') {
-          upsertRacer(message.racer);
+        const message = JSON.parse(event.data) as ServerMessage;
+        if (message.type === 'error') {
+          setError(message.message || 'Room error');
+          return;
         }
 
-        if (message.type === 'start') {
-          setCurrentText(message.text);
-          beginCountdown();
-        }
-
-        if (message.type === 'reset') {
-          setCurrentText(message.text);
-          setRaceStarted(false);
-          setRaceFinished(false);
-          setCountdown(null);
-          setWpm(0);
-          setAccuracy(100);
-          setProgress({ currentWordIdx: 0, totalWords: 0 });
-        }
-
-        if (message.type === 'progress' || message.type === 'finish') {
-          upsertRacer(message.racer);
-        }
+        if (message.roomId !== roomId || !message.snapshot) return;
+        applySnapshot(message.snapshot);
       } catch {
-        // Ignore non-JSON messages such as "Lobby full" from the current Go hub.
+        setError('Could not read room update');
       }
     };
 
     return () => socket.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  }, [racerId, error, roomId]);
 
   useEffect(() => {
-    if (!raceStarted || raceFinished) return;
+    if (!racerId || !raceStarted || raceFinished || raceEnded) return;
 
     sendMessage({
       type: 'progress',
@@ -201,52 +230,45 @@ function RoomRacePage() {
       racer: localRacer,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progressPercentage, wpm, accuracy, raceStarted, raceFinished, roomId]);
+  }, [progressPercentage, wpm, accuracy, raceStarted, raceFinished, raceEnded, roomId, racerId]);
 
-  const beginCountdown = () => {
-    setRaceStarted(false);
-    setRaceFinished(false);
-    setCountdown(3);
+  useEffect(() => {
+    if (!raceEnded || expireSentRef.current) return;
 
-    const countInterval = window.setInterval(() => {
-      setCountdown(prev => {
-        if (prev === 1) {
-          window.clearInterval(countInterval);
-          setRaceStarted(true);
-          return null;
-        }
-
-        return prev ? prev - 1 : null;
-      });
-    }, 1000);
-  };
+    expireSentRef.current = true;
+    sendMessage({
+      type: 'expire',
+      roomId,
+    });
+  }, [raceEnded, roomId]);
 
   const startRace = () => {
     sendMessage({
       type: 'start',
       roomId,
       text: currentText,
-      startedBy: racerIdRef.current,
+      durationSeconds: estimateRaceDuration(currentText),
     });
-    beginCountdown();
   };
 
   const resetRace = async () => {
-    const data = await getRandomTextAPI();
-    setCurrentText(data.text);
-    setRaceStarted(false);
-    setRaceFinished(false);
-    setCountdown(null);
-    setWpm(0);
-    setAccuracy(100);
-    setProgress({ currentWordIdx: 0, totalWords: 0 });
-    setRacers([]);
-
-    sendMessage({
-      type: 'reset',
-      roomId,
-      text: data.text,
-    });
+    try {
+      setIsLoading(true);
+      const data = await getRandomTextAPI();
+      setWpm(0);
+      setAccuracy(100);
+      setProgress({ currentWordIdx: 0, totalWords: 0 });
+      progressRef.current = { currentWordIdx: 0, totalWords: 0 };
+      setRaceFinished(false);
+      setCurrentText(data.text);
+      sendMessage({
+        type: 'reset',
+        roomId,
+        text: data.text,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copyRoomLink = async () => {
@@ -265,23 +287,37 @@ function RoomRacePage() {
     };
 
     setRaceFinished(true);
-    upsertRacer(finishedRacer);
+    recordSessionStats(stats.wpm, stats.accuracy);
+
+    if (currentUser) {
+      saveLeaderboardEntry({
+        userId: currentUser.id,
+        name: currentUser.name,
+        mode: isGlobalRoom ? 'Global race' : 'Private room',
+        roomId,
+        wpm: stats.wpm,
+        accuracy: stats.accuracy,
+      });
+      updateUserStats(stats.wpm, stats.accuracy);
+    }
+
     sendMessage({
       type: 'finish',
       roomId,
       racer: finishedRacer,
     });
-
-    saveLeaderboardEntry({
-      name: 'You',
-      mode: isGlobalRoom ? 'Global race' : 'Private room',
-      roomId,
-      wpm: stats.wpm,
-      accuracy: stats.accuracy,
-    });
-
-    updateUserStats(stats.wpm, stats.accuracy);
   };
+
+  if (error) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-xl items-center justify-center font-michroma">
+        <Card className="rounded-lg p-8 text-center">
+          <h1 className="text-2xl font-bold">Room unavailable</h1>
+          <p className="mt-3 leading-7 text-muted-foreground">{error}</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 font-michroma">
@@ -302,42 +338,57 @@ function RoomRacePage() {
             )}
             {connected ? 'Connected' : 'Connecting'}
           </div>
+          <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-2 text-sm">
+            <Clock className="size-4 text-cyan-500" />
+            {roomStatus === 'waiting' ? 'Waiting' : `${timeLeftSeconds}s left`}
+          </div>
           {!isGlobalRoom && (
             <Button variant="outline" onClick={copyRoomLink}>
               <Copy className="size-4" />
               {copied ? 'Copied' : 'Invite'}
             </Button>
           )}
-          <Button variant="outline" onClick={resetRace}>
+          <Button variant="outline" onClick={resetRace} disabled={!connected || isLoading}>
             <RotateCcw className="size-4" />
             New Text
           </Button>
-          <Button onClick={startRace} disabled={isLoading || countdown !== null}>
+          <Button
+            onClick={startRace}
+            disabled={!connected || isLoading || !currentText || roomStatus === 'racing'}
+          >
             <Play className="size-4" />
             Start Race
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <Card className="rounded-lg p-6">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg border bg-background p-4">
               <p className="text-sm text-muted-foreground">Your run</p>
-              <p className="text-2xl font-bold">
-                {wpm} WPM · {accuracy}% accuracy
-              </p>
+              <p className="mt-2 text-2xl font-bold">{wpm} WPM</p>
             </div>
-            <div className="text-right">
+            <div className="rounded-lg border bg-background p-4">
+              <p className="text-sm text-muted-foreground">Accuracy</p>
+              <p className="mt-2 text-2xl font-bold">{accuracy}%</p>
+            </div>
+            <div className="rounded-lg border bg-background p-4">
               <p className="text-sm text-muted-foreground">Progress</p>
-              <p className="text-2xl font-bold">{progressPercentage}%</p>
+              <p className="mt-2 text-2xl font-bold">{progressPercentage}%</p>
             </div>
           </div>
 
           {countdown !== null && (
             <div className="mb-6 rounded-lg border bg-card p-8 text-center">
               <div className="text-7xl font-bold text-cyan-500">{countdown}</div>
-              <p className="mt-2 text-muted-foreground">Get ready</p>
+              <p className="mt-2 text-muted-foreground">Race starts soon</p>
+            </div>
+          )}
+
+          {raceEnded && !raceFinished && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              Time is up. Start a new race when everyone is ready.
             </div>
           )}
 
@@ -347,13 +398,16 @@ function RoomRacePage() {
               setWpm(stats.wpm);
               setAccuracy(stats.accuracy);
             }}
-            onProgressChange={(data) => setProgress(data)}
+            onProgressChange={(data) => {
+              progressRef.current = data;
+              setProgress(data);
+            }}
             onComplete={finishRace}
             isLoading={isLoading}
             isRace
             wpm={wpm}
             accuracy={accuracy}
-            disabled={!raceStarted || countdown !== null}
+            disabled={!raceStarted || raceEnded || raceFinished}
           />
         </Card>
 
@@ -361,16 +415,16 @@ function RoomRacePage() {
           <div className="mb-5">
             <h2 className="text-xl font-bold">Live Leaderboard</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Racers in this room update as they type.
+              {sortedRacers.length} racer{sortedRacers.length === 1 ? '' : 's'} in this room.
             </p>
           </div>
 
           <div className="space-y-3">
-            {[{ ...localRacer, name: 'You' }, ...sortedRacers].map((racer, index) => (
+            {sortedRacers.map((racer, index) => (
               <div key={racer.id} className="rounded-lg border bg-background p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                   <span className="truncate font-semibold">
-                    #{index + 1} {racer.name}
+                    #{index + 1} {racer.id === racerId ? 'You' : racer.name}
                   </span>
                   <span className="text-muted-foreground">{racer.wpm} WPM</span>
                 </div>
