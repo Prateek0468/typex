@@ -1,36 +1,70 @@
 import NavigationCards from "@/components/navigation-cards";
-// import TypingTest from "@/components/typing-test";
-// import { Button } from "@/components/ui/button";
-// import { getRandomText } from "@/lib/utils";
-import { Sparkles } from 'lucide-react';
+import { Activity, Sparkles, Timer, Users } from 'lucide-react';
 import { CardOptions } from "@/lib/constants";
 
 export default function Home() {
 
   return (
-    <div className="flex flex-col font-michroma">
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex flex-col justify-center items-center mt-[10%]">
-          <div className="flex mb-4 gap-2">
-            <Sparkles className="size-12 text-yellow-500 dark:text-yellow-400" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+    <div className="mx-auto flex max-w-7xl flex-col gap-10 font-michroma">
+      <section className="grid items-center gap-8 pt-10 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <div className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground">
+            <Sparkles className="size-4 text-amber-500" />
+            Typing practice, private rooms, and quick races
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-5xl font-bold tracking-normal text-foreground md:text-6xl">
               TypeX
             </h1>
+            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+              Build speed and accuracy in practice mode, then race friends in a shared room or jump into the global lobby.
+            </p>
           </div>
-          <p className="text-2xl text-gray-700 dark:text-gray-300 mb-4">
-            Improve your typing speed and accuracy
-          </p>
-          {/* Update it to the user's creds */}
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
-            Welcome back, <span className="font-bold text-blue-600 dark:text-blue-400">{"Username"}</span>! Your average speed: <span className="font-bold">{0} WPM</span>
-          </p>
+          <div className="grid max-w-2xl grid-cols-3 gap-3">
+            <div className="rounded-lg border bg-card p-4">
+              <Timer className="mb-3 size-5 text-cyan-500" />
+              <p className="text-2xl font-bold">Live</p>
+              <p className="text-xs text-muted-foreground">WPM tracking</p>
+            </div>
+            <div className="rounded-lg border bg-card p-4">
+              <Users className="mb-3 size-5 text-emerald-500" />
+              <p className="text-2xl font-bold">5</p>
+              <p className="text-xs text-muted-foreground">Racers per lobby</p>
+            </div>
+            <div className="rounded-lg border bg-card p-4">
+              <Activity className="mb-3 size-5 text-rose-500" />
+              <p className="text-2xl font-bold">Local</p>
+              <p className="text-xs text-muted-foreground">Leaderboard MVP</p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <p className="mb-4 text-sm text-muted-foreground">Race preview</p>
+          <div className="space-y-4">
+            {["You", "SpeedTyper92", "KeyboardNinja"].map((name, index) => (
+              <div key={name} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{name}</span>
+                  <span className="text-muted-foreground">{[68, 54, 41][index]}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-cyan-500"
+                    style={{ width: `${[68, 54, 41][index]}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
           {CardOptions.map(({ href, icon, title, description }) => (
             <NavigationCards key={href} icon={icon} title={title} description={description} href={href} />
           ))}
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

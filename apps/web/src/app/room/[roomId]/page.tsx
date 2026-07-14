@@ -1,53 +1,129 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { RACER_COLORS, RacerType } from '@/lib/constants';
-import { getRandomTextAPI } from '@/lib/utils';
-import { RotateCcw, Play } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import TypingArea from '@/components/typing-area';
+import { RACER_COLORS, RacerType } from '@/lib/constants';
+import {
+  getRandomTextAPI,
+  getWebSocketURL,
+  saveLeaderboardEntry,
+  updateUserStats,
+} from '@/lib/utils';
+import { Copy, Play, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 
-function Race() {
+type RaceMessage =
+  | {
+      type: 'join';
+      roomId: string;
+      racer: RacerType;
+    }
+  | {
+      type: 'start';
+      roomId: string;
+      text: string;
+      startedBy: string;
+    }
+  | {
+      type: 'progress';
+      roomId: string;
+      racer: RacerType;
+    }
+  | {
+      type: 'finish';
+      roomId: string;
+      racer: RacerType;
+    }
+  | {
+      type: 'reset';
+      roomId: string;
+      text: string;
+    };
 
+const guestNames = [
+  'SwiftKeys',
+  'RapidType',
+  'WordRunner',
+  'KeyPilot',
+  'SyntaxSprinter',
+];
 
-  const [racers, setRacers] = useState<RacerType[]>([]);
-  // const [raceFinished, setRaceFinished] = useState(false);
+function RoomRacePage() {
+  const params = useParams<{ roomId: string }>();
+  const roomId = params.roomId.toUpperCase();
+  const isGlobalRoom = roomId === 'GLOBAL';
+
+  const socketRef = useRef<WebSocket | null>(null);
+  const racerIdRef = useRef(
+    crypto.randomUUID()
+  );
+  const racerNameRef = useRef(
+    guestNames[Math.floor(Math.random() * guestNames.length)]
+  );
+
+  const [currentText, setCurrentText] = useState('');
+  const [connected, setConnected] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-
-  const [currentText, setCurrentText] = useState("");
-
+  const [raceStarted, setRaceStarted] = useState(false);
+  const [raceFinished, setRaceFinished] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [progress, setProgress] = useState({
     currentWordIdx: 0,
     totalWords: 0,
   });
+  const [racers, setRacers] = useState<RacerType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [raceStarted, setRaceStarted] = useState(false);
-
-  // const socket = new WebSocket("ws://localhost:8080/ws");
-
-  // socket.onopen = () => {
-  //   console.log("Connected!");
-
-  //   socket.send("hello");
-  // };
-
-  // socket.onmessage = (event) => {
-  //   console.log(event.data);
-  // };
-
 
   const progressPercentage =
     progress.totalWords === 0
       ? 0
-      : Math.round(
-        ((progress.currentWordIdx + 1) / progress.totalWords) * 100
-      );
+      : Math.min(
+          100,
+          Math.round(
+            ((progress.currentWordIdx + 1) / progress.totalWords) * 100
+          )
+        );
 
-  const totalWords = currentText.trim().split(/\s+/).length;
+  const sortedRacers = useMemo(() => {
+    // Sorting by progress turns the racer list into the MVP leaderboard for the current room.
+    return [...racers]
+      .filter(racer => racer.id !== racerIdRef.current)
+      .sort(
+      (a, b) =>
+        b.progress - a.progress ||
+        b.wpm - a.wpm ||
+        (a.finishedAt || Infinity) - (b.finishedAt || Infinity)
+    );
+  }, [racers]);
+
+  const localRacer: RacerType = {
+    id: racerIdRef.current,
+    name: racerNameRef.current,
+    progress: progressPercentage,
+    wpm,
+    accuracy,
+    color: RACER_COLORS[0],
+    finishedAt: raceFinished ? Date.now() : undefined,
+  };
+
+  const sendMessage = (message: RaceMessage) => {
+    // The Go server broadcasts plain websocket messages, so the client owns the JSON shape.
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(message));
+    }
+  };
+
+  const upsertRacer = (nextRacer: RacerType) => {
+    setRacers(prev => {
+      const withoutOldValue = prev.filter(racer => racer.id !== nextRacer.id);
+      return [...withoutOldValue, nextRacer];
+    });
+  };
 
   const loadText = async () => {
     try {
@@ -64,151 +140,206 @@ function Race() {
   }, []);
 
   useEffect(() => {
-    if (!raceStarted) return;
+    const socket = new WebSocket(getWebSocketURL());
+    socketRef.current = socket;
 
-    const interval = setInterval(() => {
-      setRacers(prev =>
-        prev.map(racer => {
-          if (racer.progress >= 100) return racer;
+    socket.onopen = () => {
+      setConnected(true);
+      sendMessage({
+        type: 'join',
+        roomId,
+        racer: localRacer,
+      });
+    };
 
-          // interval is 100ms
-          const wordsTyped = (racer.wpm / 60) * 0.1;
+    socket.onclose = () => {
+      setConnected(false);
+    };
 
-          const progressIncrease =
-            (wordsTyped / totalWords) * 100;
+    socket.onmessage = event => {
+      try {
+        const message = JSON.parse(event.data) as RaceMessage;
+        if (message.roomId !== roomId) return;
 
-          return {
-            ...racer,
-            progress: Math.min(
-              100,
-              racer.progress + progressIncrease
-            ),
-          };
-        })
-      );
-    }, 100);
+        if (message.type === 'join') {
+          upsertRacer(message.racer);
+        }
 
-    return () => clearInterval(interval);
-  }, [raceStarted, totalWords]);
+        if (message.type === 'start') {
+          setCurrentText(message.text);
+          beginCountdown();
+        }
 
-  const startRace = () => {
+        if (message.type === 'reset') {
+          setCurrentText(message.text);
+          setRaceStarted(false);
+          setRaceFinished(false);
+          setCountdown(null);
+          setWpm(0);
+          setAccuracy(100);
+          setProgress({ currentWordIdx: 0, totalWords: 0 });
+        }
+
+        if (message.type === 'progress' || message.type === 'finish') {
+          upsertRacer(message.racer);
+        }
+      } catch {
+        // Ignore non-JSON messages such as "Lobby full" from the current Go hub.
+      }
+    };
+
+    return () => socket.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!raceStarted || raceFinished) return;
+
+    sendMessage({
+      type: 'progress',
+      roomId,
+      racer: localRacer,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressPercentage, wpm, accuracy, raceStarted, raceFinished, roomId]);
+
+  const beginCountdown = () => {
+    setRaceStarted(false);
+    setRaceFinished(false);
     setCountdown(3);
-    const countInterval = setInterval(() => {
+
+    const countInterval = window.setInterval(() => {
       setCountdown(prev => {
         if (prev === 1) {
-          clearInterval(countInterval);
+          window.clearInterval(countInterval);
           setRaceStarted(true);
           return null;
         }
-        return prev! - 1;
+
+        return prev ? prev - 1 : null;
       });
     }, 1000);
   };
 
-  useEffect(() => {
-    // Generate mock racers
-    const mockRacers: RacerType[] = [
-      { id: 1, name: 'SpeedTyper92', progress: 0, wpm: 55, color: RACER_COLORS[0] },
-      { id: 2, name: 'KeyboardNinja', progress: 0, wpm: 48, color: RACER_COLORS[1] },
-      { id: 3, name: 'TypeMaster', progress: 0, wpm: 62, color: RACER_COLORS[2] },
-      { id: 4, name: 'QuickFingers', progress: 0, wpm: 74, color: RACER_COLORS[3] },
-    ];
-    setRacers(mockRacers);
-  }, [currentText]);
+  const startRace = () => {
+    sendMessage({
+      type: 'start',
+      roomId,
+      text: currentText,
+      startedBy: racerIdRef.current,
+    });
+    beginCountdown();
+  };
 
-  const onClickNewRace = () => {
-    loadText();
+  const resetRace = async () => {
+    const data = await getRandomTextAPI();
+    setCurrentText(data.text);
+    setRaceStarted(false);
+    setRaceFinished(false);
+    setCountdown(null);
     setWpm(0);
     setAccuracy(100);
-  }
+    setProgress({ currentWordIdx: 0, totalWords: 0 });
+    setRacers([]);
+
+    sendMessage({
+      type: 'reset',
+      roomId,
+      text: data.text,
+    });
+  };
+
+  const copyRoomLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  const finishRace = (stats: { wpm: number; accuracy: number }) => {
+    const finishedRacer = {
+      ...localRacer,
+      progress: 100,
+      wpm: stats.wpm,
+      accuracy: stats.accuracy,
+      finishedAt: Date.now(),
+    };
+
+    setRaceFinished(true);
+    upsertRacer(finishedRacer);
+    sendMessage({
+      type: 'finish',
+      roomId,
+      racer: finishedRacer,
+    });
+
+    saveLeaderboardEntry({
+      name: 'You',
+      mode: isGlobalRoom ? 'Global race' : 'Private room',
+      roomId,
+      wpm: stats.wpm,
+      accuracy: stats.accuracy,
+    });
+
+    updateUserStats(stats.wpm, stats.accuracy);
+  };
 
   return (
-    <div className='font-michroma flex flex-col justify-center items-center'>
-      <h1 className='text-yellow-500 mb-8'>You&apos;re racing against bots for now. Actual Racing feature with other players is coming soon!!!!!</h1>
-      <div className='flex flex-col gap-6 w-6xl'>
-        {/* header */}
-        <div className='flex justify-between items-center'>
-          <h1 className='text-3xl font-bold'>Race Mode</h1>
-          <Button variant="ghost" className='border-2 cursor-pointer' onClick={onClickNewRace}>
-            <RotateCcw />
-            New Race
-          </Button>
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 font-michroma">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {isGlobalRoom ? 'Global Racing Room' : 'Private Racing Room'}
+          </p>
+          <h1 className="text-3xl font-bold">Room {roomId}</h1>
         </div>
 
-        {/* main content area */}
-        <Card className='p-6 flex flex-col jusify-center'>
-          <div className='flex justify-between items-center'>
-            <Button className='flex items-center justify-center w-fit cursor-pointer' onClick={startRace}>
-              <Play className='size-6' />
-              Start Race
-            </Button>
-            <span>{accuracy}% Accuracy</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-2 text-sm">
+            {connected ? (
+              <Wifi className="size-4 text-emerald-500" />
+            ) : (
+              <WifiOff className="size-4 text-rose-500" />
+            )}
+            {connected ? 'Connected' : 'Connecting'}
           </div>
+          {!isGlobalRoom && (
+            <Button variant="outline" onClick={copyRoomLink}>
+              <Copy className="size-4" />
+              {copied ? 'Copied' : 'Invite'}
+            </Button>
+          )}
+          <Button variant="outline" onClick={resetRace}>
+            <RotateCcw className="size-4" />
+            New Text
+          </Button>
+          <Button onClick={startRace} disabled={isLoading || countdown !== null}>
+            <Play className="size-4" />
+            Start Race
+          </Button>
+        </div>
+      </div>
 
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <Card className="rounded-lg p-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Your run</p>
+              <p className="text-2xl font-bold">
+                {wpm} WPM · {accuracy}% accuracy
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Progress</p>
+              <p className="text-2xl font-bold">{progressPercentage}%</p>
+            </div>
+          </div>
 
           {countdown !== null && (
-            <div
-              // initial={{ opacity: 0, scale: 0.8 }}
-              // animate={{ opacity: 1, scale: 1 }}
-              className="text-center mb-8"
-            >
-              <div
-                key={countdown}
-                // initial={{ scale: 1.5, opacity: 0 }}
-                // animate={{ scale: 1, opacity: 1 }}
-                className="text-9xl font-bold bg-gradient-to-r from-red-600 to-orange-600 dark:from-red-400 dark:to-orange-400 bg-clip-text text-transparent"
-              >
-                {countdown}
-              </div>
-              <p className="text-2xl text-gray-600 dark:text-gray-400 mt-4 font-semibold">Get ready...</p>
+            <div className="mb-6 rounded-lg border bg-card p-8 text-center">
+              <div className="text-7xl font-bold text-cyan-500">{countdown}</div>
+              <p className="mt-2 text-muted-foreground">Get ready</p>
             </div>
           )}
-
-
-
-          <div className="space-y-3 mb-8">
-            <div
-              // initial={{ opacity: 0, x: -20 }}
-              // animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-2 border-blue-300 dark:border-blue-700"
-            >
-              <div className="w-32 font-bold text-blue-700 dark:text-blue-400 text-lg">You 👤</div>
-              <div className="flex-1 bg-gray-300 dark:bg-gray-700 rounded-full h-10 relative overflow-hidden shadow-inner">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${[progressPercentage]}%` }}
-                  className="bg-gradient-to-r from-blue-600 to-blue-400 h-full flex items-center justify-end px-3 shadow-lg"
-                  transition={{ duration: 0.3 }}
-                >
-                  <span className="text-white text-sm font-bold">{Math.round(progressPercentage)}%</span>
-                </motion.div>
-              </div>
-              <div className="w-24 text-right font-bold text-blue-700 dark:text-blue-400 text-lg">{wpm} WPM</div>
-            </div>
-
-            {racers.map((racer) => (
-              <div
-                key={racer.id}
-                // initial={{ opacity: 0, x: -20 }}
-                // animate={{ opacity: 1, x: 0 }}
-                // transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-700"
-              >
-                <div className="w-32 text-gray-700 dark:text-gray-300 truncate font-medium">{racer.name}</div>
-                <div className="flex-1 bg-gray-300 dark:bg-gray-700 rounded-full h-10 relative overflow-hidden shadow-inner">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${racer.progress}%` }}
-                    className={`${racer.color} h-full flex items-center justify-end px-3 shadow-lg`}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <span className="text-white text-sm font-bold">{Math.round(racer.progress)}%</span>
-                  </motion.div>
-                </div>
-                <div className="w-24 text-right text-gray-600 dark:text-gray-400 font-semibold">{racer.wpm} WPM</div>
-              </div>
-            ))}
-          </div>
 
           <TypingArea
             text={currentText}
@@ -216,19 +347,47 @@ function Race() {
               setWpm(stats.wpm);
               setAccuracy(stats.accuracy);
             }}
-            onProgressChange={(data) => {
-              setProgress(data);
-            }}
+            onProgressChange={(data) => setProgress(data)}
+            onComplete={finishRace}
             isLoading={isLoading}
             isRace
             wpm={wpm}
-            accuracy={wpm}
+            accuracy={accuracy}
+            disabled={!raceStarted || countdown !== null}
           />
+        </Card>
 
+        <Card className="rounded-lg p-6">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold">Live Leaderboard</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Racers in this room update as they type.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[{ ...localRacer, name: 'You' }, ...sortedRacers].map((racer, index) => (
+              <div key={racer.id} className="rounded-lg border bg-background p-3">
+                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate font-semibold">
+                    #{index + 1} {racer.name}
+                  </span>
+                  <span className="text-muted-foreground">{racer.wpm} WPM</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
+                  <motion.div
+                    animate={{ width: `${Math.min(100, racer.progress)}%` }}
+                    className={`${racer.color || 'bg-cyan-500'} h-full rounded-full`}
+                    transition={{ duration: 0.25 }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
-export default Race
+export default RoomRacePage;

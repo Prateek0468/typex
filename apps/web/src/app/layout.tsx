@@ -39,7 +39,7 @@ export default function RootLayout({
     // suppressHydrationWarning is needed because next-themes modify the DOM on load to set the correct theme.
     >
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${michroma.variable} antialiased h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} ${michroma.variable} min-h-screen antialiased`}
       >
         <ThemeProvider
           attribute="class"
@@ -48,7 +48,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Header />
-          <main className="flex-1">
+          <main className="min-h-[calc(100vh-96px)] px-4 pb-12">
             {children}
           </main>
         </ThemeProvider>

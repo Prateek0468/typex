@@ -1,8 +1,10 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { typingdata } from "../app/data";
+import { LeaderboardEntry } from "./constants";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL
+const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const leaderboardStorageKey = "typex-leaderboard";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -45,6 +47,56 @@ export const updateUserStats = async (wpm: number, accuracy: number) => {
   } catch (err) {
     console.error(err);
   }
+}
+
+export const getWebSocketURL = () => {
+  // NEXT_PUBLIC_WS_URL lets production point to a hosted websocket server.
+  // If it is missing, the app derives ws/wss from the API URL so local dev works with one env variable.
+  const explicitURL = process.env.NEXT_PUBLIC_WS_URL;
+  if (explicitURL) return explicitURL;
+
+  const fallbackHTTPURL = baseURL || "http://localhost:8080";
+  return fallbackHTTPURL.replace(/^http/, "ws") + "/ws";
+}
+
+export const createRoomCode = () => {
+  // A short readable code is enough for the MVP because the websocket server currently broadcasts messages.
+  // The client still includes roomId in every message, so different rooms can ignore each other.
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+export const loadLeaderboard = (): LeaderboardEntry[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const savedEntries = window.localStorage.getItem(leaderboardStorageKey);
+    return savedEntries ? JSON.parse(savedEntries) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const saveLeaderboardEntry = (
+  entry: Omit<LeaderboardEntry, "id" | "completedAt">
+) => {
+  if (typeof window === "undefined") return;
+
+  const nextEntry: LeaderboardEntry = {
+    ...entry,
+    id: crypto.randomUUID(),
+    completedAt: new Date().toISOString(),
+  };
+
+  const nextEntries = [nextEntry, ...loadLeaderboard()]
+    .sort((a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy)
+    .slice(0, 25);
+
+  window.localStorage.setItem(
+    leaderboardStorageKey,
+    JSON.stringify(nextEntries)
+  );
+
+  return nextEntry;
 }
 
 /**

@@ -41,16 +41,16 @@ function Practice() {
   };
 
   return (
-    <div className='font-michroma flex flex-col justify-center items-center'>
-      <div className='flex flex-col gap-6 w-4xl'>
+    <div className='mx-auto flex max-w-5xl flex-col gap-6 font-michroma'>
         {/* header */}
-        <div className='flex justify-between items-center'>
-          <h1 className='text-3xl font-bold'>
-            Practice Mode
-          </h1>
+        <div className='flex flex-wrap items-center justify-between gap-4'>
+          <div>
+            <h1 className='text-3xl font-bold'>Practice Mode</h1>
+            <p className="mt-2 text-muted-foreground">Warm up with random passages and track live speed.</p>
+          </div>
           <Button
             variant="ghost"
-            className='border-2 cursor-pointer'
+            className='cursor-pointer border'
             onClick={onClickNewText}
           >
             <RotateCcw />
@@ -59,43 +59,43 @@ function Practice() {
         </div>
 
         {/* main content */}
-        <Card className='p-6 flex flex-col'>
-          <div className='grid grid-cols-3 gap-4 mb-6'>
+        <Card className='rounded-lg p-6'>
+          <div className='mb-6 grid gap-4 md:grid-cols-3'>
             {/* WPM */}
             <div
-              className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border-2 border-blue-200 dark:border-blue-700">
+              className="rounded-lg border border-cyan-200 bg-cyan-50 p-5 text-center dark:border-cyan-900 dark:bg-cyan-950/40">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                <Zap className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                <div className="text-sm font-medium text-muted-foreground">
                   WPM
                 </div>
               </div>
-              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+              <div className="text-4xl font-bold text-cyan-700 dark:text-cyan-300">
                 {wpm}
               </div>
             </div>
 
             {/* Accuracy */}
             <div
-              className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border-2 border-green-200 dark:border-green-700">
+              className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-900 dark:bg-emerald-950/40">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                <Target className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <div className="text-sm font-medium text-muted-foreground">
                   Accuracy
                 </div>
               </div>
-              <div className="text-4xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-4xl font-bold text-emerald-700 dark:text-emerald-300">
                 {accuracy}%
               </div>
             </div>
 
             {/* Progress */}
             <div
-              className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl border-2 border-purple-200 dark:border-purple-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">
+              className="rounded-lg border border-rose-200 bg-rose-50 p-5 text-center dark:border-rose-900 dark:bg-rose-950/40">
+              <div className="mb-2 text-sm font-medium text-muted-foreground">
                 Progress
               </div>
-              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+              <div className="text-4xl font-bold text-rose-700 dark:text-rose-300">
                 {Math.min(
                   progress.currentWordIdx + 1,
                   progress.totalWords
@@ -116,7 +116,6 @@ function Practice() {
             isLoading={isLoading}
           />
         </Card>
-      </div>
     </div>
 
   );

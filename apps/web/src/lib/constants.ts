@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { Keyboard, Trophy } from "lucide-react";
+import { Keyboard, Trophy, Medal } from "lucide-react";
 
 export interface Theme {
   name: string;
@@ -20,11 +20,23 @@ export type NavigationCardsType = {
 }
 
 export type RacerType = {
-  id: number;
+  id: number | string;
   name: string;
   progress: number;
   wpm: number;
   color: string;
+  accuracy?: number;
+  finishedAt?: number;
+}
+
+export type LeaderboardEntry = {
+  id: string;
+  name: string;
+  mode: string;
+  roomId: string;
+  wpm: number;
+  accuracy: number;
+  completedAt: string;
 }
 
 export const RACER_COLORS = [
@@ -57,5 +69,11 @@ export const CardOptions: NavigationCardsType[] = [
     title: "Multiplayer",
     href: "/race",
     description: "Compete against others in real-time typing races"
+  },
+  {
+    icon: Medal,
+    title: "Leaderboard",
+    href: "/leaderboard",
+    description: "Track your best race results and compare recent runs"
   },
 ]

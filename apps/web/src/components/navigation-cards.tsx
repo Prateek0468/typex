@@ -7,15 +7,17 @@ import Link from 'next/link';
 function NavigationCards({ icon, title, href, description }: NavigationCardsType) {
   const Icon = icon;
   return (
-    <Link href={href}>
-      <Card className="flex flex-col max-w-[600px] justify-center items-center shadow-lg dark:shadow-black/40 hover:shadow-xl dark:hover:shadow-black/60 transition-all transform hover:-translate-y-2">
-        <CardHeader className='-translate-x-6'>
-          <Icon className='size-15' />
+    <Link href={href} className="group">
+      <Card className="h-full rounded-lg border bg-card/80 shadow-sm transition-all hover:-translate-y-1 hover:border-cyan-400 hover:shadow-lg">
+        <CardHeader>
+          <div className="flex size-12 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 transition-colors group-hover:bg-cyan-500 group-hover:text-white dark:text-cyan-300">
+            <Icon className='size-6' />
+          </div>
         </CardHeader>
 
-        <CardContent className='flex flex-col justify-center items-center text-center'>
-          <CardTitle className='text-3xl font-bold mb-3'>{title}</CardTitle>
-          <CardDescription className='text-lg'>{description}</CardDescription>
+        <CardContent>
+          <CardTitle className='mb-3 text-2xl font-bold'>{title}</CardTitle>
+          <CardDescription className='text-base leading-7'>{description}</CardDescription>
         </CardContent>
       </Card>
     </Link>

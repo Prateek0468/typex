@@ -18,6 +18,11 @@ type TypingAreaProps = {
   isRace?: boolean;
   wpm?: number;
   accuracy?: number;
+  disabled?: boolean;
+  onComplete?: (stats: {
+    wpm: number;
+    accuracy: number;
+  }) => void;
 };
 
 export default function TypingArea({
@@ -28,6 +33,8 @@ export default function TypingArea({
   isRace,
   wpm = 0, 
   accuracy = 100,
+  disabled = false,
+  onComplete,
 }: TypingAreaProps) {
 
   const [typedWords, setTypedWords] = useState<string[]>([]);
@@ -76,7 +83,9 @@ export default function TypingArea({
 
   }, [currentWordIdx]);
 
-  // updating stats
+  // Recalculate speed and accuracy on every typed character.
+  // The parent page receives these numbers so it can update stat cards, progress bars,
+  // race broadcasts, and the local leaderboard without duplicating typing math.
   const updateStats = (
     nextTypedWords: string[],
     currentInput: string
@@ -144,10 +153,13 @@ export default function TypingArea({
         )
         : 0;
 
-    onStatsChange({
+    const nextStats = {
       wpm: nextWpm,
       accuracy: nextAccuracy,
-    });
+    };
+
+    onStatsChange(nextStats);
+    return nextStats;
   };
 
 
@@ -173,13 +185,18 @@ export default function TypingArea({
       ];
 
       setTypedWords(nextTypedWords);
-      updateStats(
+      const finalStats = updateStats(
         nextTypedWords,
         ""
       );
 
+      setCurrentWordIdx(words.length - 1);
+      onProgressChange({
+        currentWordIdx: words.length - 1,
+        totalWords: words.length,
+      });
       setIsComplete(true);
-      // onFinish({ isComplete });
+      onComplete?.(finalStats);
       setUserInput("");
       return;
     }
@@ -270,11 +287,11 @@ export default function TypingArea({
 
   return (
     <>
-      <div className="mb-6 p-8 bg-gradient-to-br rounded-xl text-2xl font-mono h-70 overflow-scroll leading-relaxed border-2 border-gray-200 dark:border-gray-700 shadow-inner">
+      <div className="mb-6 h-72 overflow-y-auto rounded-lg border bg-background/80 p-6 text-xl leading-relaxed shadow-inner md:text-2xl">
         {isLoading && (
-          <div className='flex justify-center items-center h-full'>
-            <LoaderPinwheel />
-            ...Loading
+          <div className='flex h-full items-center justify-center gap-2 text-muted-foreground'>
+            <LoaderPinwheel className="animate-spin" />
+            Loading text
           </div>
         )}
 
@@ -335,16 +352,16 @@ export default function TypingArea({
         value={userInput}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
-        disabled={isComplete}
-        className="w-full p-5 text-xl border-2 rounded-xl focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono transition-all"
-        placeholder="Start typing here..."
+        disabled={disabled || isComplete || isLoading || words.length === 0}
+        className="w-full rounded-lg border bg-background p-5 font-mono text-xl transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+        placeholder={disabled ? "Wait for the race to start..." : "Start typing here..."}
         autoFocus
       />
 
       {isComplete && (
         <div className="flex flex-col items-center justify-center mt-4 text-center">
           <div className="text-2xl font-bold text-green-600">
-            Test Completed 🎉
+            Test completed
           </div>
           <div className="text-sm text-gray-500 mt-2">
             Press &quot;New Text&quot; to try again

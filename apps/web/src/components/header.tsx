@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Moon, Sun, Trophy, Zap } from 'lucide-react';
+import { Keyboard, Moon, Sun, Trophy, Users, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import LoginForm from './login-form';
 import { UserType } from '@/lib/constants';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function Header() {
   const { theme, setTheme } = useTheme();
@@ -46,22 +46,39 @@ function Header() {
     }
   }
 
-  console.log(user, 'user')
   if (!mounted) return null;
 
   return (
     <>
-      <header className="text-xl flex justify-between items-center p-10 font-michroma">
-        <Link className="flex gap-2 font-bold" href="/">
-          <Zap className="size-8" />
+      <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-4 backdrop-blur font-michroma">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+        <Link className="flex items-center gap-2 text-xl font-bold" href="/">
+          <Zap className="size-7 text-cyan-500" />
           TypeX
         </Link>
 
-        <div className="flex gap-4">
-          <Button>
-            <Trophy className="size-4 text-yellow-500 dark:text-yellow-600" />
-            Avg: 0 WPM
+        <nav className="hidden items-center gap-2 md:flex">
+          <Button asChild variant="ghost">
+            <Link href="/practice">
+              <Keyboard className="size-4" />
+              Practice
+            </Link>
           </Button>
+          <Button asChild variant="ghost">
+            <Link href="/race">
+              <Users className="size-4" />
+              Race
+            </Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/leaderboard">
+              <Trophy className="size-4 text-amber-500" />
+              Leaderboard
+            </Link>
+          </Button>
+        </nav>
+
+        <div className="flex items-center gap-3">
 
           <Button
             onClick={() =>
@@ -78,7 +95,7 @@ function Header() {
 
           {user ? (
             <div className='flex items-center gap-2'>
-              <span>{user.name}</span>
+              <span className="hidden max-w-32 truncate text-sm md:inline">{user.name}</span>
               <Button onClick={handleLogout}>
                 Logout
               </Button>
@@ -91,6 +108,7 @@ function Header() {
               Login / Signup
             </Button>
           )}
+        </div>
         </div>
       </header>
 
