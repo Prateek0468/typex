@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -49,9 +50,9 @@ func main() {
 	// load env file
 	err := godotenv.Load()
 	if err != nil {
-		panic(".env file not found")
+			log.Println("No .env file found, using environment variables") // local machine loads env and render will load it's own env so no panic here just print
 	}
-
+	
 	// get the database url
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
