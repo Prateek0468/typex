@@ -84,15 +84,20 @@ func main() {
 
 	corshandler := enableCors(mux)
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // for local development
+	}
+
 	// verify connection
 	if err := pool.Ping(context.Background()); err != nil {
 		panic("db ping failed: " + err.Error())
 	}
 	fmt.Println("DB connected")
 
-	fmt.Println("Server running on :8080")
+	fmt.Println("Server running on" + port)
 
-	err1 := http.ListenAndServe(":8080", corshandler)
+	err1 := http.ListenAndServe(":"+port, corshandler)
 	if err1 != nil {
 		panic(err)
 	}
