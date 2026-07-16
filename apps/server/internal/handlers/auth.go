@@ -82,7 +82,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24, // 1 day
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
@@ -143,7 +143,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24, // 1 day
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
@@ -160,7 +160,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1, // Delete Immediately
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 		Expires:  time.Unix(0, 0),
 	})
 
