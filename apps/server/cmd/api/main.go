@@ -23,7 +23,7 @@ func enableCors(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		allowedOrigins := map[string]bool{
 			"http://localhost:3000": true,
-			"https://typex-web-snowy.vercel.app": true,
+			"https://typex-racing.vercel.app": true,
 		}
 
 		if allowedOrigins[origin] {
