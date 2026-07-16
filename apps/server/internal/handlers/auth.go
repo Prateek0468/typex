@@ -80,6 +80,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		Name:     "token",
 		Value:    token,
 		HttpOnly: true,
+		Secure: true,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24, // 1 day
 		SameSite: http.SameSiteNoneMode,
@@ -141,6 +142,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "token",
 		Value:    token,
 		HttpOnly: true,
+		Secure: true,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24, // 1 day
 		SameSite: http.SameSiteNoneMode,
@@ -159,6 +161,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1, // Delete Immediately
+		Secure: true,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
 		Expires:  time.Unix(0, 0),
