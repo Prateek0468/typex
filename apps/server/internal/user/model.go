@@ -1,5 +1,7 @@
 package user
 
+import "time"
+
 type User struct {
 	ID        string
 	Name      string
@@ -8,9 +10,10 @@ type User struct {
 }
 
 type UserStats struct {
-	UserID string
-	TotalRaces int
-	AverageWPM int
-	AverageAccuracy int
-	BestWPM int
+	UserID          string  `json:"userId"`
+	AverageWPM      int     `json:"averageWPM"`
+	AverageAccuracy int     `json:"averageAccuracy"`
+	BestWPM         int     `json:"bestWPM"`
+	TotalRaces      int     `json:"totalRaces"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }

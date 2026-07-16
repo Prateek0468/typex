@@ -14,7 +14,6 @@ import {
   getRoomAPI,
   getWebSocketURL,
   recordSessionStats,
-  saveLeaderboardEntry,
   updateUserStats,
 } from '@/lib/utils';
 import { Clock, Copy, Play, RotateCcw, Wifi, WifiOff } from 'lucide-react';
@@ -290,14 +289,14 @@ function RoomRacePage() {
     recordSessionStats(stats.wpm, stats.accuracy);
 
     if (currentUser) {
-      saveLeaderboardEntry({
-        userId: currentUser.id,
-        name: currentUser.name,
-        mode: isGlobalRoom ? 'Global race' : 'Private room',
-        roomId,
-        wpm: stats.wpm,
-        accuracy: stats.accuracy,
-      });
+      // saveLeaderboardEntry({
+      //   userId: currentUser.id,
+      //   name: currentUser.name,
+      //   mode: isGlobalRoom ? 'Global race' : 'Private room',
+      //   roomId,
+      //   wpm: stats.wpm,
+      //   accuracy: stats.accuracy,
+      // });
       updateUserStats(stats.wpm, stats.accuracy);
     }
 

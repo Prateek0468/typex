@@ -74,7 +74,7 @@ func (r *Repository) GetById(ctx context.Context, id string) (User, error) {
 }
 
 // get user stats
-func (r * Repository) GetUserStats(ctx context.Context, userId string) (*UserStats, error) {
+func (r *Repository) GetUserStats(ctx context.Context, userId string) (*UserStats, error) {
 	var stats UserStats
 
 	err := r.db.QueryRow(ctx,
@@ -118,4 +118,36 @@ func (r *Repository) UpdateUserStats(ctx context.Context, userID string, wpm int
 	fmt.Println("rows updated:", result.RowsAffected())
 
 	return nil
+}
+
+
+func (r *Repository) GetAllUserStats(ctx context.Context, limit, offset int) ([]UserStats, error) {
+	rows, err := r.db.Query(ctx, `
+	SELECT user_id, avg_wpm, avg_accuracy, best_wpm, total_races, updated_at
+	FROM user_stats ORDER BY best_wpm DESC LIMIT $1 OFFSET $2`, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var users []UserStats
+	
+	for rows.Next() {
+		var user UserStats
+
+		err := rows.Scan(&user.UserID, &user.AverageWPM, &user.AverageAccuracy, &user.BestWPM, &user.TotalRaces, &user.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user);
+
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	return users, nil
 }

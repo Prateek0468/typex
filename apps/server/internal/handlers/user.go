@@ -38,3 +38,21 @@ func (h *Handler) User(w http.ResponseWriter, r *http.Request) {
 		"email": user.Email,
 	})
 }
+
+func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	limit := 20
+	page:= 1
+
+	offset := (page - 1) * limit
+	users, err := h.userRepo.GetAllUserStats(ctx, limit, offset)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string {
+			"error": err.Error(),
+		})
+		return 
+	}
+
+	utils.WriteJSON(w, http.StatusOK, users)
+}

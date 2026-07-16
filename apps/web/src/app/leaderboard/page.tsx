@@ -7,13 +7,19 @@ import { loadLeaderboard } from '@/lib/utils';
 import { Medal, Trophy } from 'lucide-react';
 
 function LeaderboardPage() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
+  // todo: add user name instead of id and add loading state
   useEffect(() => {
-    // Browser storage is used only for the MVP so the UI works before a public leaderboard API exists.
-    setEntries(loadLeaderboard());
+    const fetchLeaderboard = async () => {
+      const entries = await loadLeaderboard();
+      setLeaderboard(entries);
+    };
+  
+    fetchLeaderboard();
   }, []);
 
+  console.log(leaderboard)
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 font-michroma">
       <div>
@@ -32,10 +38,10 @@ function LeaderboardPage() {
           <span>Player</span>
           <span>WPM</span>
           <span>Accuracy</span>
-          <span>Mode</span>
+          <span>Total Races</span>
         </div>
 
-        {entries.length === 0 ? (
+        {leaderboard.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <Medal className="size-10 text-muted-foreground" />
             <h2 className="text-xl font-bold">No races completed yet</h2>
@@ -44,21 +50,21 @@ function LeaderboardPage() {
             </p>
           </div>
         ) : (
-          entries.map((entry, index) => (
+          leaderboard.map((entry, index) => (
             <div
-              key={entry.id}
+              key={entry.userId}
               className="grid min-w-[720px] grid-cols-[72px_1fr_120px_120px_150px] gap-4 border-b px-6 py-4 last:border-b-0"
             >
               <span className="font-bold">#{index + 1}</span>
               <div>
-                <p className="font-semibold">{entry.name}</p>
+                <p className="font-semibold">{entry.userId}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(entry.completedAt).toLocaleString()}
+                  {new Date(entry.updatedAt).toLocaleString()}
                 </p>
               </div>
-              <span>{entry.wpm}</span>
-              <span>{entry.accuracy}%</span>
-              <span className="truncate">{entry.mode}</span>
+              <span>{entry.bestWPM}</span>
+              <span>{entry.averageAccuracy}%</span>
+              <span className="truncate">{entry.totalRaces}</span>
             </div>
           ))
         )}

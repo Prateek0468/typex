@@ -89,8 +89,10 @@ func main() {
 	mux.HandleFunc("/rooms", handler.Rooms)
 	mux.HandleFunc("/rooms/", handler.RoomByID)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
+	mux.HandleFunc("/leaderboard", handler.Leaderboard)
 	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
 	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
+
 
 	corshandler := enableCors(mux)
 

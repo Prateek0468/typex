@@ -4,7 +4,6 @@ import { typingdata } from "../app/data";
 import { LeaderboardEntry, SessionStats, UserType } from "./constants";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-const leaderboardStorageKey = "typex-leaderboard";
 const sessionStatsStorageKey = "typex-session-stats";
 const guestProfileStorageKey = "typex-guest-profile";
 
@@ -180,40 +179,24 @@ export const recordSessionStats = (wpm: number, accuracy: number) => {
   return nextStats;
 }
 
-export const loadLeaderboard = (): LeaderboardEntry[] => {
-  if (typeof window === "undefined") return [];
-
+export const loadLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   try {
-    const savedEntries = window.localStorage.getItem(leaderboardStorageKey);
-    const entries = savedEntries ? JSON.parse(savedEntries) : [];
-    return entries.filter((entry: LeaderboardEntry) => Boolean(entry.userId));
-  } catch {
+    const response = await fetch(`${baseURL}/leaderboard`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to load leaderboard");
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error(err);
     return [];
   }
-}
+};
 
-export const saveLeaderboardEntry = (
-  entry: Omit<LeaderboardEntry, "id" | "completedAt">
-) => {
-  if (typeof window === "undefined" || !entry.userId) return;
-
-  const nextEntry: LeaderboardEntry = {
-    ...entry,
-    id: crypto.randomUUID(),
-    completedAt: new Date().toISOString(),
-  };
-
-  const nextEntries = [nextEntry, ...loadLeaderboard()]
-    .sort((a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy)
-    .slice(0, 25);
-
-  window.localStorage.setItem(
-    leaderboardStorageKey,
-    JSON.stringify(nextEntries)
-  );
-
-  return nextEntry;
-}
 
 /**
    * Calculates Words Per Minute (WPM) based on user input and elapsed time

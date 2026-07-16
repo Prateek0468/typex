@@ -37,15 +37,13 @@ export type RacerType = {
 }
 
 export type LeaderboardEntry = {
-  id: string;
   userId: string;
-  name: string;
-  mode: string;
-  roomId: string;
-  wpm: number;
-  accuracy: number;
-  completedAt: string;
-}
+  averageWPM: number;
+  averageAccuracy: number;
+  bestWPM: number;
+  totalRaces: number;
+  updatedAt: string;
+};
 
 export const RACER_COLORS = [
   'bg-blue-500',
