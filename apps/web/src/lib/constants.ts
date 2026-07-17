@@ -38,6 +38,7 @@ export type RacerType = {
 
 export type LeaderboardEntry = {
   userId: string;
+  name: string;
   averageWPM: number;
   averageAccuracy: number;
   bestWPM: number;

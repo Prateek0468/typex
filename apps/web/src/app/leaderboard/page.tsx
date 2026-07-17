@@ -4,24 +4,28 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { LeaderboardEntry } from '@/lib/constants';
 import { loadLeaderboard } from '@/lib/utils';
-import { Medal, Trophy } from 'lucide-react';
+import { Loader, Medal, Trophy } from 'lucide-react';
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // todo: add user name instead of id and add loading state
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      const entries = await loadLeaderboard();
-      setLeaderboard(entries);
+      setIsLoading(true);
+      try{
+        const entries = await loadLeaderboard();
+        setLeaderboard(entries);
+      } finally {
+        setIsLoading(false);
+      }
     };
   
     fetchLeaderboard();
   }, []);
 
-  console.log(leaderboard)
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 font-michroma">
+    <div className="mx-auto flex max-w-5xl flex-col gap-3 font-michroma">
       <div>
         <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
           <Trophy className="size-6" />
@@ -41,7 +45,14 @@ function LeaderboardPage() {
           <span>Total Races</span>
         </div>
 
-        {leaderboard.length === 0 ? (
+        {isLoading && (
+          <div className='flex justify-center items-center gap-2 mb-5'>
+            <Loader />
+            Loading...
+          </div>
+        )}
+
+        {leaderboard.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <Medal className="size-10 text-muted-foreground" />
             <h2 className="text-xl font-bold">No races completed yet</h2>
@@ -57,7 +68,7 @@ function LeaderboardPage() {
             >
               <span className="font-bold">#{index + 1}</span>
               <div>
-                <p className="font-semibold">{entry.userId}</p>
+                <p className="font-semibold">{entry.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(entry.updatedAt).toLocaleString()}
                 </p>
