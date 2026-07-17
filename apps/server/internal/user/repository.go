@@ -123,8 +123,8 @@ func (r *Repository) UpdateUserStats(ctx context.Context, userID string, wpm int
 
 func (r *Repository) GetAllUserStats(ctx context.Context, limit, offset int) ([]UserStats, error) {
 	rows, err := r.db.Query(ctx, `
-	SELECT user_id, avg_wpm, avg_accuracy, best_wpm, total_races, updated_at
-	FROM user_stats ORDER BY best_wpm DESC LIMIT $1 OFFSET $2`, limit, offset)
+	SELECT u.id, u.name, us.avg_wpm, us.avg_accuracy, us.best_wpm, us.total_races, us.updated_at
+	FROM user_stats us JOIN users u ON us.user_id = u.id ORDER BY best_wpm DESC LIMIT $1 OFFSET $2`, limit, offset)
 
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (r *Repository) GetAllUserStats(ctx context.Context, limit, offset int) ([]
 	for rows.Next() {
 		var user UserStats
 
-		err := rows.Scan(&user.UserID, &user.AverageWPM, &user.AverageAccuracy, &user.BestWPM, &user.TotalRaces, &user.UpdatedAt)
+		err := rows.Scan(&user.UserID, &user.Name, &user.AverageWPM, &user.AverageAccuracy, &user.BestWPM, &user.TotalRaces, &user.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}

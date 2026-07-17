@@ -11,6 +11,7 @@ type User struct {
 
 type UserStats struct {
 	UserID          string  `json:"userId"`
+	Name            string   `json:"name"`
 	AverageWPM      int     `json:"averageWPM"`
 	AverageAccuracy int     `json:"averageAccuracy"`
 	BestWPM         int     `json:"bestWPM"`
