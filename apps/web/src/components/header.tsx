@@ -28,11 +28,14 @@ function Header() {
     setMounted(true);
   }, []);
 
+  const refreshUser = async () => {
+    const res = await getCurrentUser();
+    setUser(res ?? undefined);
+  };
+
   useEffect(() => {
-    getCurrentUser().then(res => {
-      setUser(res ?? undefined);
-    });
-  }, [])
+    refreshUser();
+  }, []);
 
   useEffect(() => {
     setSessionStats(loadSessionStats());
@@ -64,68 +67,68 @@ function Header() {
     <>
       <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-4 backdrop-blur font-michroma">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-        <Link className="flex items-center gap-2 text-xl font-bold" href="/">
-          <Zap className="size-7 text-cyan-500" />
-          TypeX
-        </Link>
+          <Link className="flex items-center gap-2 text-xl font-bold" href="/">
+            <Zap className="size-7 text-cyan-500" />
+            TypeX
+          </Link>
 
-        <nav className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost">
-            <Link href="/practice">
-              <Keyboard className="size-4" />
-              Practice
-            </Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/race">
-              <Users className="size-4" />
-              Race
-            </Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/leaderboard">
-              <Trophy className="size-4 text-amber-500" />
-              Leaderboard
-            </Link>
-          </Button>
-        </nav>
+          <nav className="hidden items-center gap-2 md:flex">
+            <Button asChild variant="ghost">
+              <Link href="/practice">
+                <Keyboard className="size-4" />
+                Practice
+              </Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/race">
+                <Users className="size-4" />
+                Race
+              </Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/leaderboard">
+                <Trophy className="size-4 text-amber-500" />
+                Leaderboard
+              </Link>
+            </Button>
+          </nav>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden rounded-lg border px-3 py-2 text-xs leading-5 text-muted-foreground sm:block">
-            <span className="font-semibold text-foreground">{sessionStats.bestWpm}</span> best WPM
-            <span className="mx-2">·</span>
-            <span className="font-semibold text-foreground">{sessionStats.averageAccuracy}%</span> avg accuracy
-          </div>
-
-          <Button
-            onClick={() =>
-              setTheme(theme === 'dark' ? 'light' : 'dark')
-            }
-            className="cursor-pointer"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </Button>
-
-          {user ? (
-            <div className='flex items-center gap-2'>
-              <span className="hidden max-w-32 truncate text-sm md:inline">{user.name}</span>
-              <Button onClick={handleLogout}>
-                Logout
-              </Button>
+          <div className="flex items-center gap-3">
+            <div className="hidden rounded-lg border px-3 py-2 text-xs leading-5 text-muted-foreground sm:block">
+              <span className="font-semibold text-foreground">{sessionStats.bestWpm}</span> best WPM
+              <span className="mx-2">·</span>
+              <span className="font-semibold text-foreground">{sessionStats.averageAccuracy}%</span> avg accuracy
             </div>
-          ) : (
+
             <Button
-              onClick={() => setIsLoginOpen(true)}
+              onClick={() =>
+                setTheme(theme === 'dark' ? 'light' : 'dark')
+              }
               className="cursor-pointer"
             >
-              Login / Signup
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </Button>
-          )}
-        </div>
+
+            {user ? (
+              <div className='flex items-center gap-2'>
+                <span className="hidden max-w-32 truncate text-sm md:inline">{user.name}</span>
+                <Button onClick={handleLogout}>
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => setIsLoginOpen(true)}
+                className="cursor-pointer"
+              >
+                Login / Signup
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -138,7 +141,10 @@ function Header() {
             >
               ✕
             </button>
-            <LoginForm />
+            <LoginForm onSuccess={async () => {
+              await refreshUser();
+              setIsLoginOpen(false);
+            }} />
           </div>
         </div>
       )}

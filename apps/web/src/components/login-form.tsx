@@ -27,11 +27,17 @@ type FormDataType = {
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+type LoginFormProps = React.ComponentProps<"div"> & {
+  onSuccess?: () => void;
+};
+
+
 
 export default function LoginForm({
   className,
+  onSuccess,
   ...props
-}: React.ComponentProps<"div">) {
+}: LoginFormProps) {
   const [isSignup, setIsSignup] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -62,6 +68,7 @@ export default function LoginForm({
       }
 
       console.log("login successful: ", result);
+      onSuccess?.();
     } catch (err) {
       console.error(err);
     }
@@ -90,6 +97,7 @@ export default function LoginForm({
       }
 
       console.log("signup successful: ", result);
+      onSuccess?.();
     } catch (err) {
       console.error(err);
     }
