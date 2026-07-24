@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"typex-server/internal/auth"
+	"typex-server/internal/mail"
 	"typex-server/internal/room"
 	"typex-server/internal/user"
 	"typex-server/internal/utils"
@@ -16,10 +17,12 @@ import (
 type Handler struct {
 	userRepo  *user.Repository
 	roomStore *room.MemoryStore
+	mailer    *mail.Mailer
+
 }
 
-func NewHandler(userRepo *user.Repository, roomStore *room.MemoryStore) *Handler {
-	return &Handler{userRepo: userRepo, roomStore: roomStore}
+func NewHandler(userRepo *user.Repository, roomStore *room.MemoryStore, mailer *mail.Mailer) *Handler {
+	return &Handler{userRepo: userRepo, roomStore: roomStore, mailer: mailer}
 }
 
 // not putting it in a separate model.go because it belongs to the domain, not the layer
@@ -68,23 +71,81 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GenerateToken(user.ID)
+
+	// generate email verification token
+	verificationToken, err := auth.GenerateVerificationToken()
+
 	if err != nil {
-		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": "failed to generate token",
-		})
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			map[string]string{
+				"error": "failed to generate verification token",
+			},
+		)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    token,
-		HttpOnly: true,
-		Secure: true,
-		Path:     "/",
-		MaxAge:   60 * 60 * 24, // 1 day
-		SameSite: http.SameSiteNoneMode,
-	})
+
+	// token expires after 24 hours
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+
+	// save verification token
+	err = h.userRepo.SetVerificationToken(
+		r.Context(),
+		user.ID,
+		verificationToken,
+		expiresAt,
+	)
+
+	if err != nil {
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			map[string]string{
+				"error": "failed to save verification token",
+			},
+		)
+		return
+	}
+
+	// sending email
+	err = h.mailer.SendVerificationEmail(
+		user.Email,
+		verificationToken,
+	)
+	
+	if err != nil {
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			map[string]string{
+				"error": err.Error(),
+			},
+		)
+		return
+	}
+
+
+	// // Don't need it anymore because we will now just send a verification email first and when user logs in then we will generate jwt
+	// token, err := auth.GenerateToken(user.ID)
+	// if err != nil {
+	// 	utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+	// 		"error": "failed to generate token",
+	// 	})
+	// 	return
+	// }
+
+	// http.SetCookie(w, &http.Cookie{
+	// 	Name:     "token",
+	// 	Value:    token,
+	// 	HttpOnly: true,
+	// 	Secure: true,
+	// 	Path:     "/",
+	// 	MaxAge:   60 * 60 * 24, // 1 day
+	// 	SameSite: http.SameSiteNoneMode,
+	// })
 
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "signup successful",
@@ -126,6 +187,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{
 			"error": "invalid credentials",
 		})
+		return
+	}
+
+	if !user.EmailVerified {
+		utils.WriteJSON(
+			w,
+			http.StatusForbidden,
+			map[string]string{
+				"error": "please verify your email first",
+			},
+		)
 		return
 	}
 
@@ -171,3 +243,36 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		"message": "logged out",
 	})
 }
+
+// email verification handler
+func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+
+	err := h.userRepo.VerifyEmail(
+		r.Context(),
+		token,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			"invalid or expired verification token",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		map[string]string{
+			"message": "email verified successfully",
+		},
+	)
+}
+

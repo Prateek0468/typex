@@ -10,6 +10,7 @@ import (
 	"typex-server/internal/auth"
 	"typex-server/internal/db"
 	"typex-server/internal/handlers"
+	"typex-server/internal/mail"
 	"typex-server/internal/room"
 	"typex-server/internal/user"
 	"typex-server/internal/websocket"
@@ -77,7 +78,11 @@ func main() {
 	defer pool.Close()
 
 	userRepo := user.NewRepository(pool)
-	handler := handlers.NewHandler(userRepo, roomStore)
+	mailer := mail.NewMailer(
+		os.Getenv("RESEND_API_KEY"),
+		os.Getenv("EMAIL_FROM"),
+	)
+	handler := handlers.NewHandler(userRepo, roomStore, mailer)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("server is running"))
@@ -90,6 +95,7 @@ func main() {
 	mux.HandleFunc("/rooms/", handler.RoomByID)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
 	mux.HandleFunc("/leaderboard", handler.Leaderboard)
+	mux.HandleFunc("/verify_email", handler.VerifyEmail)
 	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
 	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
 

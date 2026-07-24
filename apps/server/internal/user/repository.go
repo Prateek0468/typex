@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -58,8 +59,8 @@ func (r *Repository) CreateUser(ctx context.Context, name, email, password strin
 func (r *Repository) GetByEmail(ctx context.Context, email string) (User, error) {
 	var u User
 	err := r.db.QueryRow(ctx, 
-		`SELECT id, name, email, password_hash FROM users WHERE email=$1`, email,
-	).Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash)
+		`SELECT id, name, email, password_hash, email_verified FROM users WHERE email=$1`, email,
+	).Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.EmailVerified)
 
 	return u, err
 }
@@ -150,4 +151,41 @@ func (r *Repository) GetAllUserStats(ctx context.Context, limit, offset int) ([]
 	}
 
 	return users, nil
+}
+
+func (r *Repository) SetVerificationToken(
+	ctx context.Context,
+	userID string,
+	token string,
+	expiresAt time.Time,
+) error {
+
+	_, err := r.db.Exec(
+		ctx,
+		`UPDATE users SET verification_token = $1, verification_expires_at = $2 WHERE id = $3`, token, expiresAt, userID)
+
+	return err
+}
+
+
+func (r *Repository) VerifyEmail(
+	ctx context.Context,
+	token string,
+) error {
+
+	result, err := r.db.Exec(
+		ctx,
+		`UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_expires_at = NULL WHERE verification_token = $1 AND verification_expires_at > NOW()`, token)
+
+	if err != nil {
+		return err
+	}
+
+	rows := result.RowsAffected()
+
+	if rows == 0 {
+		return fmt.Errorf("invalid or expired verification token")
+	}
+
+	return nil
 }

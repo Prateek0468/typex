@@ -7,6 +7,7 @@ type User struct {
 	Name      string
 	Email     string
 	PasswordHash  string
+	EmailVerified bool
 }
 
 type UserStats struct {
