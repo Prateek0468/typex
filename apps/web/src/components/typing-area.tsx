@@ -1,7 +1,7 @@
 'use client';
 
 import { LoaderPinwheel } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 type TypingAreaProps = {
   text: string;
@@ -251,28 +251,38 @@ export default function TypingArea({
   // word coloring
   const renderCurrentWord = (
     word: string,
-    typedWord: string = ""
+    typedWord: string = "",
+    showCursor = false,
   ) => {
-    return word.split("").map(
-      (char, index) => {
-        let className = "text-gray-400";
-
-        if (index < typedWord.length) {
-          className =
-            typedWord[index] === char
-              ? "text-green-600"
-              : "text-red-600";
-        }
-
-        return (
-          <span
-            key={index}
-            className={className}
-          >
-            {char}
-          </span>
-        );
-      }
+    return (
+      <>
+        {word.split("").map((char, index) => {
+          let className = "text-gray-400";
+  
+          if (index < typedWord.length) {
+            className =
+              typedWord[index] === char
+                ? "text-green-600"
+                : "text-red-600";
+          }
+  
+          return (
+            <Fragment key={index}>
+              {showCursor && index === typedWord.length && (
+                <span className="inline-block h-7 w-[2px] typing-cursor bg-blue-500 align-middle" />
+              )}
+  
+              <span className={className}>
+                {char}
+              </span>
+            </Fragment>
+          );
+        })}
+  
+        {showCursor && typedWord.length === word.length && (
+          <span className="inline-block h-7 w-[2px] typing-cursor bg-blue-500 align-middle" />
+        )}
+      </>
     );
   };
 
@@ -297,7 +307,8 @@ export default function TypingArea({
               >
                 {renderCurrentWord(
                   word,
-                  typedWords[index]
+                  typedWords[index],
+                  false
                 )}
                 {" "}
               </span>
@@ -314,7 +325,8 @@ export default function TypingArea({
                 <span className="border-b-2 border-blue-500">
                   {renderCurrentWord(
                     word,
-                    userInput
+                    userInput,
+                    true
                   )}
                 </span>
 

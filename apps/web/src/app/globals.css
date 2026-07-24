@@ -125,3 +125,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.typing-cursor {
+  animation: blink 1s steps(1) infinite;
+}
