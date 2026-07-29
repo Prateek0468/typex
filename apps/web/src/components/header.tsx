@@ -8,11 +8,14 @@ import Link from 'next/link';
 import LoginForm from './login-form';
 import { SessionStats, UserType } from '@/lib/constants';
 import { getCurrentUser, loadSessionStats } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function Header() {
   const { theme, setTheme } = useTheme();
+  const searchParams = useSearchParams();
+
 
   const [mounted, setMounted] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -23,6 +26,25 @@ function Header() {
     averageAccuracy: 100,
     bestWpm: 0,
   });
+  const [verificationMessage, setVerificationMessage] = useState("");
+
+  useEffect(() => {
+    const verified = searchParams.get("verified");
+
+    if (verified === "true") {
+      setVerificationMessage(
+        "Email verified successfully. You can now log in."
+      );
+      setIsLoginOpen(true);
+    }
+
+    if (verified === "false") {
+      setVerificationMessage(
+        "Verification link is invalid or expired."
+      );
+      setIsLoginOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setMounted(true);
@@ -141,11 +163,13 @@ function Header() {
             >
               ✕
             </button>
-            <LoginForm onSuccess={async () => {
-              await refreshUser();
-              setIsLoginOpen(false);
-            }} />
-          </div>
+            <LoginForm
+              verificationMessage={verificationMessage}
+              onSuccess={async () => {
+                await refreshUser();
+                setIsLoginOpen(false);
+              }}
+            />          </div>
         </div>
       )}
     </>

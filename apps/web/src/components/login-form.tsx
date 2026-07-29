@@ -28,6 +28,7 @@ type FormDataType = {
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type LoginFormProps = React.ComponentProps<"div"> & {
+  verificationMessage?: string;
   onSuccess?: () => void;
 };
 
@@ -36,6 +37,7 @@ type LoginFormProps = React.ComponentProps<"div"> & {
 export default function LoginForm({
   className,
   onSuccess,
+  verificationMessage,
   ...props
 }: LoginFormProps) {
   const [isSignup, setIsSignup] = useState(false);
@@ -137,6 +139,12 @@ export default function LoginForm({
         </CardHeader>
 
         <CardContent>
+          {verificationMessage && (
+            <div className="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-700">
+              {verificationMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <FieldGroup>
 

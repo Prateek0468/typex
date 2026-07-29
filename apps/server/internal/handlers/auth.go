@@ -245,41 +245,36 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // email verification handler
+
 func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
 	if token == "" {
-		http.Error(w, "missing token", http.StatusBadRequest)
-		return
-	}
-
-	err := h.userRepo.VerifyEmail(
-		r.Context(),
-		token,
-	)
-
-	if err != nil {
-		http.Error(
+		http.Redirect(
 			w,
-			"invalid or expired verification token",
-			http.StatusBadRequest,
+			r,
+			"http://localhost:3000/?verified=false",
+			http.StatusSeeOther,
 		)
 		return
 	}
 
-	// utils.WriteJSON(
-	// 	w,
-	// 	http.StatusOK,
-	// 	map[string]string{
-	// 		"message": "email verified successfully",
-	// 	},
-	// )
+	err := h.userRepo.VerifyEmail(r.Context(), token)
+	if err != nil {
+		http.Redirect(
+			w,
+			r,
+			"http://localhost:3000/?verified=false",
+			http.StatusSeeOther,
+		)
+		return
+	}
 
 	http.Redirect(
-    w,
-    r,
-    "http://localhost:3000/login?verified=true",
-    http.StatusSeeOther,
-)
+		w,
+		r,
+		"http://localhost:3000/?verified=true",
+		http.StatusSeeOther,
+	)
 }
 
