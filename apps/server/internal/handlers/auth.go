@@ -267,12 +267,19 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(
-		w,
-		http.StatusOK,
-		map[string]string{
-			"message": "email verified successfully",
-		},
-	)
+	// utils.WriteJSON(
+	// 	w,
+	// 	http.StatusOK,
+	// 	map[string]string{
+	// 		"message": "email verified successfully",
+	// 	},
+	// )
+
+	http.Redirect(
+    w,
+    r,
+    "http://localhost:3000/login?verified=true",
+    http.StatusSeeOther,
+)
 }
 

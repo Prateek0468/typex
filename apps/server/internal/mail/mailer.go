@@ -25,7 +25,7 @@ func (m *Mailer) SendVerificationEmail(
 ) error {
 
 	link := fmt.Sprintf(
-		"http://localhost:3000/verify-email?token=%s",
+		"http://localhost:8080/verify-email?token=%s",
 		token,
 	)
 

@@ -95,7 +95,7 @@ func main() {
 	mux.HandleFunc("/rooms/", handler.RoomByID)
 	mux.HandleFunc("/api/typing", handler.GetRandomText)
 	mux.HandleFunc("/leaderboard", handler.Leaderboard)
-	mux.HandleFunc("/verify_email", handler.VerifyEmail)
+	mux.HandleFunc("/verify-email", handler.VerifyEmail)
 	mux.Handle("/user", auth.AuthMiddleware(http.HandlerFunc(handler.User)))
 	mux.Handle("/race/finish", auth.AuthMiddleware((http.HandlerFunc(handler.FinishRace))))
 
