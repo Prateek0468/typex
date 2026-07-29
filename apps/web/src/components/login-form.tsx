@@ -47,6 +47,7 @@ export default function LoginForm({
     password: "",
     confirmPassword: "",
   });
+  const [message, setMessage] = useState("");
 
   const handleLogin = async (data: FormDataType) => {
     const { email, password } = data;
@@ -99,7 +100,10 @@ export default function LoginForm({
       }
 
       console.log("signup successful: ", result);
-      onSuccess?.();
+      setMessage(
+        "Account created successfully. Please check your email to verify your account."
+      );
+      // onSuccess?.();
     } catch (err) {
       console.error(err);
     }
@@ -145,6 +149,12 @@ export default function LoginForm({
             </div>
           )}
 
+
+          {message && (
+            <div className="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-700">
+              {message}
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <FieldGroup>
 
