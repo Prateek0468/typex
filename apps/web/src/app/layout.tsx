@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Michroma } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Suspense } from "react";
 import "./globals.css";
 import Header from "@/components/header";
 
@@ -47,7 +48,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
+          <Suspense fallback={null}>
+            <Header />
+          </Suspense>
           <main className="min-h-[calc(100vh-96px)] px-4 pb-12">
             {children}
           </main>
