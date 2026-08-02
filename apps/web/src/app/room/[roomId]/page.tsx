@@ -65,6 +65,9 @@ function RoomRacePage() {
   const progressRef = useRef({
     currentWordIdx: 0,
     totalWords: 0,
+    completedChars: 0,
+    totalChars: 0,
+    percent: 0,
   });
 
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
@@ -78,6 +81,9 @@ function RoomRacePage() {
   const [progress, setProgress] = useState({
     currentWordIdx: 0,
     totalWords: 0,
+    completedChars: 0,
+    totalChars: 0,
+    percent: 0,
   });
   const [racers, setRacers] = useState<RacerType[]>([]);
   const [roomStatus, setRoomStatus] = useState<RoomStatus>('waiting');
@@ -99,15 +105,7 @@ function RoomRacePage() {
     ? Math.max(0, Math.ceil((endsAt - serverNow) / 1000))
     : 0;
 
-  const progressPercentage =
-    progress.totalWords === 0
-      ? 0
-      : Math.min(
-          100,
-          Math.round(
-            ((progress.currentWordIdx + 1) / progress.totalWords) * 100
-          )
-        );
+  const progressPercentage = progress.percent;
 
   const localRacer: RacerType = {
     id: racerId,
@@ -256,8 +254,8 @@ function RoomRacePage() {
       const data = await getRandomTextAPI();
       setWpm(0);
       setAccuracy(100);
-      setProgress({ currentWordIdx: 0, totalWords: 0 });
-      progressRef.current = { currentWordIdx: 0, totalWords: 0 };
+      setProgress({ currentWordIdx: 0, totalWords: 0, completedChars: 0, totalChars: 0, percent: 0 });
+      progressRef.current = { currentWordIdx: 0, totalWords: 0, completedChars: 0, totalChars: 0, percent: 0 };
       setRaceFinished(false);
       setCurrentText(data.text);
       sendMessage({

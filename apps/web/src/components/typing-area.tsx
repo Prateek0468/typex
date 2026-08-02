@@ -12,6 +12,9 @@ type TypingAreaProps = {
   onProgressChange: (progress: {
     currentWordIdx: number;
     totalWords: number;
+    completedChars: number;
+    totalChars: number;
+    percent: number;
   }) => void;
   isLoading: boolean;
   isRace?: boolean;
@@ -57,13 +60,33 @@ export default function TypingArea({
     inputRef.current?.focus();
   }, [text]);
 
-  useEffect(() => {
+  const totalChars = text.length;
+
+  const emitProgress = (
+    nextTypedWords: string[],
+    currentInput: string,
+    nextCurrentWordIdx = currentWordIdx
+  ) => {
+    const typedChars = nextTypedWords.join(' ').length;
+    const charsInCurrentInput = currentInput.length;
+    const completedChars = typedChars + (nextTypedWords.length > 0 ? 1 : 0) + charsInCurrentInput;
+    const percent = totalChars === 0
+      ? 0
+      : Math.min(100, Math.round((completedChars / totalChars) * 100));
+
     onProgressChange({
-      currentWordIdx,
+      currentWordIdx: nextCurrentWordIdx,
       totalWords: words.length,
+      completedChars,
+      totalChars,
+      percent,
     });
+  };
+
+  useEffect(() => {
+    emitProgress([], "", 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWordIdx, words.length]);
+  }, [text, words.length, totalChars]);
 
 
   // this is auto-scrolls and focuses on the next line at the end of text area
@@ -133,14 +156,14 @@ export default function TypingArea({
         ? (Date.now() - startTime) / 1000 / 60
         : 0;
 
-    const totalChars =
+    const typedChars =
       nextTypedWords.join("").length +
       currentInput.length;
 
     const nextWpm =
       minutes > 0
         ? Math.round(
-          totalChars / 5 / minutes
+          typedChars / 5 / minutes
         )
         : 0;
 
@@ -149,6 +172,7 @@ export default function TypingArea({
       accuracy: nextAccuracy,
     };
 
+    emitProgress(nextTypedWords, currentInput);
     onStatsChange(nextStats);
     return nextStats;
   };
@@ -182,10 +206,7 @@ export default function TypingArea({
       );
 
       setCurrentWordIdx(words.length - 1);
-      onProgressChange({
-        currentWordIdx: words.length - 1,
-        totalWords: words.length,
-      });
+      emitProgress(nextTypedWords, "", words.length - 1);
       setIsComplete(true);
       onComplete?.(finalStats);
       setUserInput("");
@@ -214,6 +235,7 @@ export default function TypingArea({
       );
 
       setCurrentWordIdx(prev => prev + 1);
+      emitProgress(nextTypedWords, "", currentWordIdx + 1);
       setUserInput("");
       return;
     }
@@ -258,27 +280,27 @@ export default function TypingArea({
       <>
         {word.split("").map((char, index) => {
           let className = "text-gray-400";
-  
+
           if (index < typedWord.length) {
             className =
               typedWord[index] === char
                 ? "text-green-600"
                 : "text-red-600";
           }
-  
+
           return (
             <Fragment key={index}>
               {showCursor && index === typedWord.length && (
                 <span className="inline-block h-7 w-[2px] typing-cursor bg-blue-500 align-middle" />
               )}
-  
+
               <span className={className}>
                 {char}
               </span>
             </Fragment>
           );
         })}
-  
+
         {showCursor && typedWord.length === word.length && (
           <span className="inline-block h-7 w-[2px] typing-cursor bg-blue-500 align-middle" />
         )}
